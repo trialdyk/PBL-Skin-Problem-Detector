@@ -16,9 +16,17 @@ class AuthCubit extends Cubit<AuthState> {
     emit(state.copyWith(acceptedTerms: value, clearError: true));
   }
 
+  /// Menutup pesan galat (mis. panel "kata sandi salah") saat pengguna
+  /// kembali mengetik.
+  void clearError() {
+    if (state.errorMessage == null) return;
+    emit(state.copyWith(clearError: true));
+  }
+
   Future<void> login({
     required String email,
     required String password,
+    bool viaGoogle = false,
   }) async {
     emit(state.copyWith(status: AuthStatus.loading, clearError: true));
     try {
@@ -26,18 +34,18 @@ class AuthCubit extends Cubit<AuthState> {
         email: email,
         password: password,
         acceptedTerms: state.canSubmit,
+        viaGoogle: viaGoogle,
       );
       emit(state.copyWith(status: AuthStatus.authenticated, user: user));
     } on AuthException catch (e) {
-      emit(state.copyWith(
-        status: AuthStatus.failure,
-        errorMessage: e.message,
-      ));
+      emit(state.copyWith(status: AuthStatus.failure, errorMessage: e.message));
     } catch (_) {
-      emit(state.copyWith(
-        status: AuthStatus.failure,
-        errorMessage: 'Login gagal. Coba lagi.',
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.failure,
+          errorMessage: 'Login gagal. Coba lagi.',
+        ),
+      );
     }
   }
 

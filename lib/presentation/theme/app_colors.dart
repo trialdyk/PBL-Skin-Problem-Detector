@@ -41,4 +41,13 @@ abstract final class AppColors {
 
   /// Warna teks yang terbaca di atas [gradeColor].
   static Color onGrade(int g) => g >= 4 ? white : ink;
+
+  /// Latar bubble/permukaan galat: versi sangat muda dari [danger] sehingga
+  /// teks [dangerInk] tetap terbaca di atasnya.
+  static Color dangerSurface(Color danger) => Color.lerp(danger, white, 0.86)!;
+
+  /// Warna teks & ikon di atas [dangerSurface]. Lebih tua dari [danger] agar
+  /// kontras ± 6,4:1 (WCAG AA butuh ≥ 4,5:1 untuk teks kecil).
+  static Color dangerInk(Color danger) =>
+      Color.lerp(danger, const Color(0xFF000000), 0.28)!;
 }

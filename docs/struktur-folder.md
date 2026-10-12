@@ -100,7 +100,7 @@ PBL-Skin-Problem-Detector/
 
 | File | Isi |
 |---|---|
-| `app_colors.dart` | Palet brand + `gradeColor`/`onGrade` |
+| `app_colors.dart` | Palet brand + `gradeColor`/`onGrade`/`dangerSurface`/`dangerInk` |
 | `app_theme.dart` | `ThemeData` shadcn + `ColorScheme` |
 | `app_font.dart` | Helper `appFont(...)` (Plus Jakarta Sans) |
 

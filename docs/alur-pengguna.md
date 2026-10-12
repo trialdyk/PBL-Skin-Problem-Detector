@@ -39,11 +39,46 @@ centang S&K + privasi (`togglePrivacy(true)`, `toggleTerms(true)`) lalu memanggi
 `login(...)`. Bila status menjadi `authenticated`, `listener` melakukan
 `context.go('/home')`.
 
-- **Email/password** — divalidasi `AuthService` (tidak boleh kosong).
+- **Email/password** — divalidasi di UI secara *live*: field yang kosong atau
+  email yang formatnya salah memunculkan **bubble kecil** tepat di atas field
+  bersangkutan (bukan panel). Pengecekan berjalan saat field ditinggalkan
+  (blur), saat tombol **Masuk** ditekan, atau saat isi field dikosongkan
+  kembali.
+- **Kredensial salah** — bila field sudah valid tetapi email/kata sandi tidak
+  cocok dengan akun demo, service melempar `AuthException` dan layar
+  menampilkan **panel merah** (`Alert.destructive`) **di antara judul
+  "Masuk ke Akun Anda" dan card form**. Panel ini otomatis hilang begitu
+  pengguna mengetik ulang.
+- **Akun demo** — `pengguna@gmail.com` / `skinscan123`.
 - **Google** — *mock*: langsung login dengan email contoh
-  `pengguna@gmail.com`.
+  `pengguna@gmail.com` (`viaGoogle: true`, sehingga pemeriksaan kredensial
+  dilewati).
 - Tombol **Daftar Sekarang** memunculkan toast "Belum tersedia di versi
   prototipe."
+- **Tata letak** — halaman login tidak *scrollable* pada layar normal. Konten
+  memadat secara proporsional lewat `LayoutBuilder` (skala `maxHeight / 600`,
+  dibatasi `0.85`–`1.0`) dan `FittedBox(scaleDown)` sebagai jaring pengaman.
+  `FittedBox` baru benar-benar mengecil karena tingginya dikunci
+  `SizedBox(height: maxHeight)`; tanpa pengunci itu scroll view meneruskan
+  tinggi **tak terbatas** sehingga `scaleDown` jadi *no-op* dan sisa konten
+  terpotong diam-diam (tanpa overflow error). Pengunci inilah yang menjaga
+  panel galat kredensial, bubble inline, dan tautan "Daftar Sekarang" tetap
+  utuh.
+- **Dua mode tata letak** — mode *fit* (tinggi dikunci, tanpa geser) dipakai
+  hanya kalau konten masih muat pada skala terbaca: area konten ≥ `570` px
+  saat normal, dan ≥ `720` px saat ada pesan galat (panel/bubble menambah
+  tinggi konten). Di bawah ambang itu konten **bisa digeser**
+  (`ClampingScrollPhysics`) dan tetap pada skala terbaca, bukan menyusut
+  sampai tak terbaca (mis. panel galat di 320×568: 0,60 → 0,85). Mode
+  ditentukan per keadaan, jadi 360×640 tetap tidak bisa digeser saat idle
+  tetapi bisa digeser begitu galat muncul.
+- **Keyboard** — `resizeToAvoidBottomInset: false` membuat tinggi tata letak
+  selalu dihitung dari tinggi penuh, jadi mengetik **tidak** menggeser atau
+  menyusutkan konten. Scroll hanya aktif saat keyboard terbuka atau layar
+  pendek (`ClampingScrollPhysics`) agar field, tombol, dan tautan terbawah
+  tetap terjangkau; saat idle di layar normal scroll terkunci
+  (`NeverScrollableScrollPhysics`). Struktur widget dijaga tetap sama supaya
+  `TextField` tidak kehilangan fokus.
 
 ### 3. Beranda
 

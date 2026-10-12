@@ -154,9 +154,17 @@ Skor akhir dibulatkan dan di-*clamp* ke 0–5.
 
 ## Autentikasi (mock)
 
+Akun demo prototipe: **`pengguna@gmail.com`** / **`skinscan123`**.
+
 `AuthService.login()`:
 
 1. Delay **400 ms**.
 2. Jika S&K/privasi tidak dicentang → `AuthException`.
-3. Jika email/password kosong → `AuthException`.
+3. Jika `viaGoogle == false` dan kredensial tidak cocok dengan akun demo →
+   `AuthException('Email atau kata sandi salah. Periksa kembali.')`.
 4. Selain itu → `UserModel(email: email.trim())`.
+
+Validasi **"tidak boleh kosong"** dan **format email** tidak dikerjakan di
+service, melainkan di `LoginScreen` (lihat `alur-pengguna.md` §2) supaya
+pengguna mendapat umpan balik langsung. Dengan begitu `AuthException` dari
+service hanya berarti satu hal: kredensial salah.

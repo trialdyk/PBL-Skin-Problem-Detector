@@ -126,6 +126,19 @@ Semua warna diambil dari `AppColors` (jangan hard-code hex di widget).
 | `cameraOverlay` | `#09090B` | Overlay kamera |
 | `cameraMuted` | `#A1A1AA` | Teks kamera |
 
+**Token galat (bubble/permukaan error):**
+
+| Helper | Hasil | Pemakaian |
+|---|---|---|
+| `dangerSurface(danger)` | 14% `danger` ke arah putih | Latar bubble galat |
+| `dangerInk(danger)` | `danger` digelapkan 28% | Teks & ikon di atas `dangerSurface` |
+
+> `danger` diambil dari `Theme.of(context).colorScheme.destructive`
+> (`#DC2626`). Kedua helper ini dihitung dari warna tersebut, jadi jangan
+> memakai `destructive` langsung sebagai latar **dan** teks sekaligus —
+> hasilnya merah di atas merah (tak terbaca). Kontras pasangan ini ± 6,4:1
+> (WCAG AA butuh ≥ 4,5:1 untuk teks kecil).
+
 **Tipografi:** Plus Jakarta Sans lewat `google_fonts`. Dua cara:
 
 - Helper: `Text('Halo', style: appFont(fontSize: 14, fontWeight: FontWeight.w700))`

@@ -173,7 +173,8 @@ sequenceDiagram
 `lib/presentation/theme/` berisi token terpusat:
 
 - `app_colors.dart` — palet brand (blush/crimson) + `gradeColor(0..5)` dan
-  `onGrade(g)` untuk warna tingkat keparahan.
+  `onGrade(g)` untuk warna tingkat keparahan, serta `dangerSurface`/`dangerInk`
+  untuk permukaan galat yang tetap terbaca.
 - `app_theme.dart` — `ThemeData` shadcn (`ColorScheme` brand + tipografi).
 - `app_font.dart` — helper `appFont(...)` untuk `TextStyle` manual
   (Plus Jakarta Sans, bobot eksplisit agar tidak faux-bold).
