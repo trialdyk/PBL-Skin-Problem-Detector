@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/auth_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/auth_state.dart';
+import 'package:pbl_skin_problem_detector/data/services/auth_service.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
@@ -18,17 +21,132 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+
   bool _googleLoading = false;
   bool _rememberMe = false;
+
+  /// Pesan galat inline per-field, dirender sebagai bubble di atas field.
+  String? _emailError;
+  String? _passwordError;
+
+  /// Field baru menampilkan galat setelah "disentuh" (blur, submit, atau
+  /// dikosongkan kembali) supaya tidak berkedip merah saat masih mengetik.
+  bool _emailTouched = false;
+  bool _passwordTouched = false;
+
+  /// Nilai sebelumnya — dipakai mendeteksi field yang baru saja dikosongkan.
+  String _previousEmail = '';
+  String _previousPassword = '';
+
+  /// Format email umum: `nama@domain.tld`.
+  static final RegExp _emailPattern = RegExp(r'^[\w.+-]+@[\w-]+\.[\w.-]+$');
+
+  /// Tinggi desain acuan area konten (di bawah header). Di bawah ini konten
+  /// mulai memadat secara proporsional.
+  static const double _designHeight = 600;
+
+  /// Batas bawah skala agar teks tidak menjadi terlalu kecil.
+  static const double _minScale = 0.85;
+
+  /// Tinggi area konten minimum agar halaman login muat **tanpa** pesan galat.
+  ///
+  /// Diukur dari skala efektif teks (pemadatan dinamis × pengecilan
+  /// `FittedBox`): di bawah nilai ini konten lebih baik bisa digeser daripada
+  /// mengecil sampai teks tak terbaca (mis. 320×568 → skala 0,75).
+  static const double _minFitHeight = 570;
+
+  /// Tinggi area konten minimum saat ada pesan galat. Blok galat (panel
+  /// kredensial atau bubble inline) beserta jaraknya menambah tinggi konten,
+  /// jadi ruang yang dibutuhkan ikut naik — kalau tidak, halaman menyusut
+  /// sampai skala 0,60 (mis. panel galat di 320×568).
+  static const double _minFitHeightWithError = 720;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailFocus.addListener(_onEmailFocusChanged);
+    _passwordFocus.addListener(_onPasswordFocusChanged);
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
+  // --- Validasi -------------------------------------------------------------
+
+  static String? _validateEmail(String value) {
+    final email = value.trim();
+    if (email.isEmpty) return 'Email tidak boleh kosong';
+    if (!_emailPattern.hasMatch(email)) return 'Format email tidak valid';
+    return null;
+  }
+
+  static String? _validatePassword(String value) =>
+      value.isEmpty ? 'Kata sandi tidak boleh kosong' : null;
+
+  void _onEmailChanged(String value) {
+    context.read<AuthCubit>().clearError();
+    setState(() {
+      // Mengosongkan field yang tadinya terisi = niat jelas; langsung cek.
+      if (value.trim().isEmpty && _previousEmail.trim().isNotEmpty) {
+        _emailTouched = true;
+      }
+      _previousEmail = value;
+      _emailError = _emailTouched ? _validateEmail(value) : null;
+    });
+  }
+
+  void _onPasswordChanged(String value) {
+    context.read<AuthCubit>().clearError();
+    setState(() {
+      if (value.isEmpty && _previousPassword.isNotEmpty) {
+        _passwordTouched = true;
+      }
+      _previousPassword = value;
+      _passwordError = _passwordTouched ? _validatePassword(value) : null;
+    });
+  }
+
+  void _onEmailFocusChanged() {
+    if (_emailFocus.hasFocus) return;
+    setState(() {
+      _emailTouched = true;
+      _emailError = _validateEmail(_emailController.text);
+    });
+  }
+
+  void _onPasswordFocusChanged() {
+    if (_passwordFocus.hasFocus) return;
+    setState(() {
+      _passwordTouched = true;
+      _passwordError = _validatePassword(_passwordController.text);
+    });
+  }
+
+  // --- Aksi -----------------------------------------------------------------
+
   Future<void> _submit(AuthCubit cubit) async {
+    final emailError = _validateEmail(_emailController.text);
+    final passwordError = _validatePassword(_passwordController.text);
+
+    setState(() {
+      _emailTouched = true;
+      _passwordTouched = true;
+      _emailError = emailError;
+      _passwordError = passwordError;
+    });
+
+    // Ada field yang belum valid → cukup bubble inline. Service tidak
+    // dipanggil supaya panel merah "kredensial salah" tidak ikut muncul.
+    if (emailError != null || passwordError != null) return;
+
     cubit.togglePrivacy(true);
     cubit.toggleTerms(true);
     await cubit.login(
@@ -42,7 +160,11 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _googleLoading = true);
     cubit.togglePrivacy(true);
     cubit.toggleTerms(true);
-    await cubit.login(email: 'pengguna@gmail.com', password: 'google-oauth');
+    await cubit.login(
+      email: AuthService.demoEmail,
+      password: 'google-oauth',
+      viaGoogle: true,
+    );
     if (mounted) setState(() => _googleLoading = false);
   }
 
@@ -57,78 +179,148 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context, state) {
         final loading = state.status == AuthStatus.loading;
         final cubit = context.read<AuthCubit>();
-
         return Scaffold(
           backgroundColor: AppColors.page,
+          // Body tidak dipotong keyboard: skala tata letak selalu dihitung dari
+          // tinggi penuh, sehingga konten tidak menyusut/terangkat saat mengetik.
+          resizeToAvoidBottomInset: false,
           child: SafeArea(
             child: Column(
               children: [
-                _Header(
-                  onBack: loading ? null : () => context.go('/welcome'),
-                ),
+                _Header(onBack: loading ? null : () => context.go('/welcome')),
                 Expanded(
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 22, 16, 24),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 420),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Align(child: _ClinicalBadge()),
-                            const Gap(12),
-                            Text(
-                              'Masuk ke Akun Anda',
-                              textAlign: TextAlign.center,
-                              style: appFont(
-                                fontSize: 21.5,
-                                fontWeight: FontWeight.w700,
-                              ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Memadat di layar pendek, tidak membesar di layar tinggi.
+                      final scale = (constraints.maxHeight / _designHeight)
+                          .clamp(_minScale, 1.0);
+                      double s(double value) => value * scale;
+
+                      // Lebar mengikuti layar (dibatasi 420), sehingga FittedBox
+                      // hanya mengecil karena tinggi — bukan karena lebar.
+                      final contentWidth = math.min(
+                        math.max(constraints.maxWidth - 32, 0.0),
+                        420.0,
+                      );
+
+                      final content = Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Align(child: _ClinicalBadge()),
+                          Gap(s(12)),
+                          Text(
+                            'Masuk ke Akun Anda',
+                            textAlign: TextAlign.center,
+                            style: appFont(
+                              fontSize: s(21.5),
+                              fontWeight: FontWeight.w700,
                             ),
-                            const Gap(8),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 40),
-                              child: Text(
-                                'Akses riwayat deteksi lesi kulit, arsip '
-                                'dermoskopik, dan laporan skala GEA Anda.',
-                                textAlign: TextAlign.center,
-                                style: appFont(
-                                  fontSize: 12,
-                                  color: AppColors.inkMuted,
-                                  height: 1.6,
-                                ),
-                              ),
-                            ),
-                            const Gap(22),
-                            _buildFormCard(state, loading, cubit),
-                            const Gap(22),
-                            const _EncryptionNote(),
-                            const Gap(20),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Belum memiliki akun? ',
-                                  style: appFont(
-                                    fontSize: 14,
-                                    color: AppColors.inkMuted,
-                                  ),
-                                ),
-                                AppTextLink(
-                                  'Daftar Sekarang',
-                                  onTap: loading
-                                      ? null
-                                      : () => showComingSoon(context),
-                                ),
-                              ],
+                          ),
+                          // Panel galat kredensial dari service: berada di
+                          // antara judul dan card form.
+                          if (state.errorMessage != null) ...[
+                            Gap(s(14)),
+                            Alert.destructive(
+                              leading: const Icon(LucideIcons.circleAlert),
+                              title: Text(state.errorMessage!),
                             ),
                           ],
+                          Gap(s(22)),
+                          _buildFormCard(loading, cubit, s),
+                          Gap(s(22)),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Belum memiliki akun? ',
+                                style: appFont(
+                                  fontSize: s(14),
+                                  color: AppColors.inkMuted,
+                                ),
+                              ),
+                              AppTextLink(
+                                'Daftar Sekarang',
+                                fontSize: s(14),
+                                onTap: loading
+                                    ? null
+                                    : () => showComingSoon(context),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+
+                      // `FittedBox` baru benar-benar mengecil kalau tingginya
+                      // dibatasi — penguncian itu dilakukan pemanggil di bawah
+                      // (`SizedBox(height: maxHeight)`). Tanpa pengunci, tinggi
+                      // yang diteruskan TAK TERBATAS sehingga `scaleDown` jadi
+                      // no-op dan sisa konten terpotong diam-diam.
+                      final fitted = Align(
+                        alignment: Alignment.topCenter,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(16, s(22), 16, s(24)),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: SizedBox(
+                              width: contentWidth,
+                              child: content,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+
+                      // Terbaca karena `resizeToAvoidBottomInset: false`.
+                      final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+
+                      // Struktur widget sengaja tetap sama (hanya `physics`,
+                      // tinggi pengunci, dan padding yang berubah) agar
+                      // `TextField` tidak dibuat ulang — kalau dibuat ulang,
+                      // field kehilangan fokus dan keyboard ikut tertutup.
+                      //
+                      // Layar pendek: memaksa konten muat akan mengecilkan teks
+                      // sampai tak terbaca, jadi konten dibiarkan pada skala
+                      // terbaca dan bisa digeser. Blok galat menambah tinggi
+                      // konten, jadi ambangnya ikut naik.
+                      final hasInlineError =
+                          state.errorMessage != null ||
+                          _emailError != null ||
+                          _passwordError != null;
+                      final scrollable =
+                          constraints.maxHeight <
+                          (hasInlineError
+                              ? _minFitHeightWithError
+                              : _minFitHeight);
+
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: keyboard),
+                        child: SingleChildScrollView(
+                          // Idle di layar cukup tinggi: terkunci (memang tidak
+                          // ada sisa geser). Saat keyboard terbuka atau layar
+                          // pendek: bisa digeser supaya field, tombol, dan
+                          // tautan terbawah tetap terjangkau.
+                          physics: (keyboard == 0 && !scrollable)
+                              ? const NeverScrollableScrollPhysics()
+                              : const ClampingScrollPhysics(),
+                          // Mode "fit": tinggi anak DIKUNCI ke tinggi yang
+                          // tersedia. Tanpa pengunci ini `SingleChildScrollView`
+                          // meneruskan tinggi tak terbatas ke `FittedBox`,
+                          // sehingga `BoxFit.scaleDown` tidak pernah mengecil
+                          // dan elemen terbawah (mis. "Daftar Sekarang")
+                          // terpotong tanpa error overflow.
+                          // Mode "scroll": tinggi tidak dikunci (`null` → lolos
+                          // apa adanya) sehingga konten memakai ukuran
+                          // naturalnya dan bisa digeser sampai terbawah.
+                          // `SizedBox` selalu dipakai (hanya `height` yang
+                          // berubah) supaya jenis widget di bawah scroll view
+                          // tetap sama saat mode berpindah.
+                          child: SizedBox(
+                            height: scrollable ? null : constraints.maxHeight,
+                            child: fitted,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -139,50 +331,77 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildFormCard(AuthState state, bool loading, AuthCubit cubit) {
-    const fieldPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 13);
-    final fieldRadius = BorderRadius.circular(14);
+  Widget _buildFormCard(
+    bool loading,
+    AuthCubit cubit,
+    double Function(double) s,
+  ) {
+    final fieldPadding = EdgeInsets.symmetric(
+      horizontal: s(16),
+      vertical: s(13),
+    );
+    final fieldRadius = BorderRadius.circular(s(14));
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(s(16)),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(s(18)),
         border: Border.all(color: AppColors.border),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x14BE185D),
-            blurRadius: 24,
-            offset: Offset(0, 8),
+            color: const Color(0x14BE185D),
+            blurRadius: s(24),
+            offset: Offset(0, s(8)),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Email').small.medium,
-          const Gap(8),
+          Text(
+            'Email',
+            style: appFont(fontSize: s(14), fontWeight: FontWeight.w500),
+          ),
+          if (_emailError != null) ...[
+            Gap(s(6)),
+            _FieldErrorBubble(message: _emailError!),
+          ],
+          Gap(s(8)),
           TextField(
             controller: _emailController,
+            focusNode: _emailFocus,
             placeholder: const Text('nama@email.com'),
             keyboardType: TextInputType.emailAddress,
             enabled: !loading,
             padding: fieldPadding,
             borderRadius: fieldRadius,
+            onChanged: _onEmailChanged,
+            onSubmitted: (_) => _passwordFocus.requestFocus(),
           ),
-          const Gap(16),
-          const Text('Kata Sandi').small.medium,
-          const Gap(8),
+          Gap(s(16)),
+          Text(
+            'Kata Sandi',
+            style: appFont(fontSize: s(14), fontWeight: FontWeight.w500),
+          ),
+          if (_passwordError != null) ...[
+            Gap(s(6)),
+            _FieldErrorBubble(message: _passwordError!),
+          ],
+          Gap(s(8)),
           TextField(
             controller: _passwordController,
+            focusNode: _passwordFocus,
             placeholder: const Text('Masukkan kata sandi'),
             obscureText: true,
             enabled: !loading,
             padding: fieldPadding,
             borderRadius: fieldRadius,
             features: const [InputFeature.passwordToggle()],
+            onChanged: _onPasswordChanged,
+            onSubmitted: (_) => _submit(cubit),
           ),
-          const Gap(14),
+          Gap(s(14)),
           Row(
             children: [
               _RememberMe(
@@ -194,44 +413,37 @@ class _LoginScreenState extends State<LoginScreen> {
               const Spacer(),
               AppTextLink(
                 'Lupa kata sandi?',
-                fontSize: 13.5,
+                fontSize: s(13.5),
                 onTap: loading ? null : () => showComingSoon(context),
               ),
             ],
           ),
-          if (state.errorMessage != null) ...[
-            const Gap(16),
-            Alert.destructive(
-              leading: const Icon(LucideIcons.circleAlert),
-              title: Text(state.errorMessage!),
-            ),
-          ],
-          const Gap(18),
+          Gap(s(18)),
           AppButton(
             label: 'Masuk ke Akun',
-            height: 44,
-            fontSize: 14,
+            height: s(44),
+            fontSize: s(14),
             trailingIcon: LucideIcons.arrowRight,
             loading: loading && !_googleLoading,
             onTap: loading ? null : () => _submit(cubit),
           ),
-          const Gap(16),
-          const _OrDivider(),
-          const Gap(14),
+          Gap(s(16)),
+          _OrDivider(fontSize: s(11)),
+          Gap(s(14)),
           AppButton(
             label: 'Lanjutkan dengan Google',
-            height: 44,
-            fontSize: 14,
-            leading: const GoogleLogo(size: 20),
+            height: s(44),
+            fontSize: s(14),
+            leading: GoogleLogo(size: s(20)),
             loading: _googleLoading,
             tonal: true,
             onTap: loading ? null : () => _signInWithGoogle(cubit),
           ),
-          const Gap(18),
+          Gap(s(18)),
           Text.rich(
             TextSpan(
               style: appFont(
-                fontSize: 11,
+                fontSize: s(11),
                 height: 1.6,
                 color: AppColors.inkMuted,
               ),
@@ -251,12 +463,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   static TextSpan _linkSpan(String text) => TextSpan(
-        text: text,
-        style: appFont(
-          color: AppColors.brand,
-          fontWeight: FontWeight.w600,
-        ),
-      );
+    text: text,
+    style: appFont(color: AppColors.brand, fontWeight: FontWeight.w600),
+  );
 }
 
 /// Header blush dengan garis tipis; tombol kembali + identitas aplikasi.
@@ -276,20 +485,12 @@ class _Header extends StatelessWidget {
       ),
       child: Row(
         children: [
-          GhostButton(
-            onPressed: onBack,
-            density: ButtonDensity.icon,
-            child: const Icon(LucideIcons.arrowLeft),
-          ),
-          const Spacer(),
-          const Text('SkinScan ID').semiBold,
-          const Gap(12),
           Container(
             width: 40,
             height: 40,
             decoration: const BoxDecoration(
               color: AppColors.brand,
-              shape: BoxShape.circle,
+              shape: BoxShape.rectangle,
             ),
             child: const Icon(
               LucideIcons.user,
@@ -297,6 +498,8 @@ class _Header extends StatelessWidget {
               color: AppColors.white,
             ),
           ),
+          const Gap(12),
+          const Text('SkinScan ID').semiBold,
           const Gap(4),
         ],
       ),
@@ -383,7 +586,9 @@ class _RememberMe extends StatelessWidget {
 
 /// Garis pembatas dengan teks "atau lanjutkan dengan".
 class _OrDivider extends StatelessWidget {
-  const _OrDivider();
+  const _OrDivider({this.fontSize = 11});
+
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -394,7 +599,7 @@ class _OrDivider extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             'atau lanjutkan dengan',
-            style: appFont(fontSize: 11, color: AppColors.inkMuted),
+            style: appFont(fontSize: fontSize, color: AppColors.inkMuted),
           ),
         ),
         const Expanded(child: Divider(color: AppColors.border)),
@@ -403,36 +608,84 @@ class _OrDivider extends StatelessWidget {
   }
 }
 
-/// Pil blush ber-border: catatan enkripsi data medis.
-class _EncryptionNote extends StatelessWidget {
-  const _EncryptionNote();
+/// Bubble galat kecil yang muncul di atas field: pesan singkat + ekor
+/// segitiga yang menunjuk ke field di bawahnya.
+class _FieldErrorBubble extends StatelessWidget {
+  const _FieldErrorBubble({required this.message});
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.muted,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.shield, size: 16, color: AppColors.brand),
-          const Gap(12),
-          Expanded(
-            child: Text(
-              'Enkripsi Data Medis End-to-End '
-              '(HIPAA & Permenkes RI Compliant)',
-              style: appFont(
-                fontSize: 11,
-                height: 1.4,
-                color: AppColors.inkMuted,
+    final danger = Theme.of(context).colorScheme.destructive;
+    // Latar merah muda + teks merah tua. Sebelumnya latar dan teks sama-sama
+    // `danger`, sehingga teks tidak terlihat (merah di atas merah).
+    final surface = AppColors.dangerSurface(danger);
+    final ink = AppColors.dangerInk(danger);
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: CustomPaint(
+        painter: _BubblePainter(color: surface),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(LucideIcons.circleAlert, size: 13, color: ink),
+              const Gap(6),
+              Flexible(
+                child: Text(
+                  message,
+                  style: appFont(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: ink,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
+}
+
+/// Rounded-rect + ekor segitiga di tengah bawah (gaya balon percakapan).
+class _BubblePainter extends CustomPainter {
+  const _BubblePainter({required this.color});
+
+  static const double _radius = 8;
+  static const double _tail = 6;
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bodyHeight = size.height - _tail;
+
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, 0, size.width, bodyHeight),
+          Radius.circular(_radius),
+        ),
+      )
+      // Tumpang tindih 1px dengan badan agar tidak ada celah anti-aliasing.
+      ..moveTo(16, bodyHeight - 1)
+      ..lineTo(30, bodyHeight - 1)
+      ..lineTo(23, size.height)
+      ..close();
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_BubblePainter oldDelegate) => oldDelegate.color != color;
 }

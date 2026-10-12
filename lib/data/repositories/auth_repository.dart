@@ -14,11 +14,13 @@ class AuthRepository {
     required String email,
     required String password,
     required bool acceptedTerms,
+    bool viaGoogle = false,
   }) async {
     final user = await _service.login(
       email: email,
       password: password,
       acceptedTerms: acceptedTerms,
+      viaGoogle: viaGoogle,
     );
     _currentUser = user;
     return user;
