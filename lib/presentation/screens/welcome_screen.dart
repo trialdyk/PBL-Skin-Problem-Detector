@@ -1,178 +1,140 @@
 import 'package:go_router/go_router.dart';
-import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
+import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
+  static const _features = <(IconData, String, String)>[
+    (
+      LucideIcons.camera,
+      'Scan 3 sudut',
+      'Selfie depan, kiri, dan kanan dengan panduan posisi langsung.',
+    ),
+    (
+      LucideIcons.messagesSquare,
+      'Interview singkat',
+      'Lima pertanyaan tentang jenis kulit dan kebiasaanmu.',
+    ),
+    (
+      LucideIcons.activity,
+      'Hasil skala GEA',
+      'Tingkat keparahan jerawat 0–5 beserta penjelasannya.',
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final horizontal = (size.width * 0.06).clamp(20.0, 32.0);
-    final illustrationHeight = (size.height * 0.34).clamp(180.0, 280.0);
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: AppColors.white,
       child: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(horizontal, 16, horizontal, 24),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight - 40),
-                child: IntrinsicHeight(
-                  child: Column(
-                    children: [
-                      const Gap(12),
-                      SizedBox(
-                        height: illustrationHeight,
-                        width: double.infinity,
-                        child: DecoratedBox(
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(24),
+                            color: scheme.primary,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Stack(
-                            alignment: Alignment.center,
+                          child: Icon(
+                            LucideIcons.scanFace,
+                            size: 24,
+                            color: scheme.primaryForeground,
+                          ),
+                        ),
+                        const Gap(24),
+                        const OutlineBadge(
+                          leading: Icon(LucideIcons.sparkles, size: 12),
+                          child: Text('Skala GEA 0–5'),
+                        ),
+                        const Gap(12),
+                        const Text('Scan, analisis, dan pahami kulitmu')
+                            .x3Large
+                            .bold,
+                        const Gap(10),
+                        const Text(
+                          'Ambil 3 selfie, jawab pertanyaan singkat, dan dapatkan tingkat keparahan jerawatmu.',
+                        ).muted,
+                        const Gap(24),
+                        Card(
+                          theme: const CardTheme(padding: EdgeInsets.zero),
+                          child: Column(
                             children: [
-                              Positioned(
-                                top: 24,
-                                child: Container(
-                                  width: illustrationHeight * 0.55,
-                                  height: illustrationHeight * 0.32,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.mint,
-                                    borderRadius: BorderRadius.circular(40),
+                              for (var i = 0; i < _features.length; i++) ...[
+                                Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      IconTile(
+                                        icon: _features[i].$1,
+                                        size: 36,
+                                        iconSize: 18,
+                                      ),
+                                      const Gap(12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(_features[i].$2).small.semiBold,
+                                            const Gap(2),
+                                            Text(_features[i].$3).xSmall.muted,
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ),
-                              Icon(
-                                LucideIcons.scanFace,
-                                size: illustrationHeight * 0.38,
-                                color: AppColors.slate,
-                              ),
-                              Positioned(
-                                bottom: 20,
-                                left: 28,
-                                child: Icon(
-                                  LucideIcons.sparkles,
-                                  color: AppColors.blush.withValues(alpha: 0.9),
-                                  size: 22,
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 28,
-                                right: 28,
-                                child: Icon(
-                                  LucideIcons.leaf,
-                                  color: AppColors.sand,
-                                  size: 22,
-                                ),
-                              ),
+                                if (i != _features.length - 1) const Divider(),
+                              ],
                             ],
                           ),
                         ),
-                      ),
-                      const Gap(18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 22,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: AppColors.mint,
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                          ),
-                          const Gap(6),
-                          _Dot(color: AppColors.mint.withValues(alpha: 0.35)),
-                          const Gap(6),
-                          _Dot(color: AppColors.mint.withValues(alpha: 0.35)),
-                        ],
-                      ),
-                      const Gap(28),
-                      const Text(
-                        'Scan, Analisis, dan Pahami Kulitmu',
-                        textAlign: TextAlign.center,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.slate,
-                          height: 1.25,
-                        ),
-                      ),
-                      const Gap(12),
-                      const Text(
-                        'Mulailah perjalanan menuju kulit yang lebih sehat dengan analisis berbasis skala GEA.',
-                        textAlign: TextAlign.center,
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF7A8494),
-                          height: 1.45,
-                        ),
-                      ),
-                      const Spacer(),
-                      const Gap(28),
-                      SizedBox(
-                        width: double.infinity,
-                        child: PrimaryButton(
-                          onPressed: () => context.go('/login'),
-                          child: const Text('Masuk'),
-                        ),
-                      ),
-                      const Gap(14),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          const Text(
-                            'Siap menganalisis kulitmu? ',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF7A8494),
-                            ),
-                          ),
-                          GhostButton(
-                            onPressed: () => context.go('/login'),
-                            density: ButtonDensity.compact,
-                            child: const Text(
-                              'Lanjut',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.slate,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            );
-          },
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PrimaryButton(
+                      alignment: Alignment.center,
+                      onPressed: () => context.go('/login'),
+                      trailing: const Icon(LucideIcons.arrowRight),
+                      child: const Text('Mulai Sekarang'),
+                    ),
+                    const Gap(12),
+                    const Text(
+                      'Hasil bersifat informatif, bukan diagnosis medis.',
+                      textAlign: TextAlign.center,
+                    ).xSmall.muted,
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-}
-
-class _Dot extends StatelessWidget {
-  const _Dot({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }

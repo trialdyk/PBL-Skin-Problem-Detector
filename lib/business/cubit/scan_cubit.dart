@@ -10,11 +10,34 @@ class ScanCubit extends Cubit<ScanState> {
   final ScanRepository _repository;
   int _msgCounter = 0;
 
+  /// Tanda yaw saat foto sisi kiri diambil; dipakai untuk memvalidasi sisi
+  /// kanan (harus berlawanan) walau foto diambil di layar kamera terpisah.
+  int? leftYawSign;
+
   void startCapture() {
     emit(state.copyWith(
       phase: ScanPhase.capturing,
       currentAngle: SelfieAngle.front,
       clearError: true,
+    ));
+  }
+
+  /// Mulai ambil satu sudut saja (dari layar hub Foto).
+  void selectAngle(SelfieAngle angle) {
+    emit(state.copyWith(
+      phase: ScanPhase.capturing,
+      currentAngle: angle,
+      clearError: true,
+    ));
+  }
+
+  /// Simpan satu foto tanpa auto-lanjut ke sudut berikutnya.
+  void setSinglePhoto(SelfieAngle angle, String path) {
+    _repository.setPhoto(angle, path);
+    emit(state.copyWith(
+      session: _repository.session,
+      phase: ScanPhase.intro,
+      currentAngle: angle,
     ));
   }
 
@@ -52,6 +75,7 @@ class ScanCubit extends Cubit<ScanState> {
 
   void retakePhotos() {
     _repository.clearPhotos();
+    leftYawSign = null;
     emit(state.copyWith(
       session: _repository.session,
       phase: ScanPhase.intro,
@@ -226,6 +250,7 @@ class ScanCubit extends Cubit<ScanState> {
 
   void resetFlow() {
     _repository.reset();
+    leftYawSign = null;
     _msgCounter = 0;
     emit(const ScanState());
   }

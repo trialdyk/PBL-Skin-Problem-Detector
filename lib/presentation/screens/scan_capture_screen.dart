@@ -12,7 +12,10 @@ import 'package:pbl_skin_problem_detector/presentation/widgets/selfie_angle_prog
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class ScanCaptureScreen extends StatefulWidget {
-  const ScanCaptureScreen({super.key});
+  const ScanCaptureScreen({super.key, this.angle});
+
+  /// Bila diisi, layar hanya mengambil satu sudut lalu kembali ke hub Foto.
+  final SelfieAngle? angle;
 
   @override
   State<ScanCaptureScreen> createState() => _ScanCaptureScreenState();
@@ -42,7 +45,14 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<ScanCubit>().startCapture();
+      final cubit = context.read<ScanCubit>();
+      final single = widget.angle;
+      if (single == null) {
+        cubit.startCapture();
+      } else {
+        _analyzer.leftYawSign = cubit.leftYawSign;
+        cubit.selectAngle(single);
+      }
     });
     _initCamera();
   }
@@ -181,6 +191,12 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
         // Ambil yaw terakhir dari status stream tidak tersedia di sini —
         // gunakan tanda dari analyzer saat frame terakhir ready.
         _analyzer.rememberLeftYaw(_lastYaw);
+        cubit.leftYawSign = _analyzer.leftYawSign;
+      }
+      if (widget.angle != null) {
+        cubit.setSinglePhoto(angle, file.path);
+        if (mounted) context.pop();
+        return;
       }
       cubit.setPhoto(angle, file.path);
 
@@ -265,7 +281,9 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                     children: [
                       IconButton.ghost(
                         icon: const Icon(LucideIcons.x, color: AppColors.white),
-                        onPressed: () => context.go('/scan'),
+                        onPressed: () => widget.angle != null
+                            ? context.pop()
+                            : context.go('/scan'),
                       ),
                       Expanded(
                         child: Text(
@@ -275,6 +293,7 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: AppColors.white,
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -285,12 +304,21 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                   const Gap(12),
                   Row(
                     children: [
-                      _StatusChip(label: 'PENCAHAYAAN', ok: _lightingOk),
-                      const Gap(8),
-                      _StatusChip(label: 'POSISI WAJAH', ok: _faceOk),
+                      _StatusChip(
+                        label: 'Cahaya',
+                        icon: LucideIcons.sun,
+                        ok: _lightingOk,
+                      ),
                       const Gap(8),
                       _StatusChip(
-                        label: _angleLabel(state.currentAngle),
+                        label: 'Wajah',
+                        icon: LucideIcons.scanFace,
+                        ok: _faceOk,
+                      ),
+                      const Gap(8),
+                      _StatusChip(
+                        label: 'Sudut',
+                        icon: LucideIcons.rotate3d,
                         ok: _angleOk,
                       ),
                     ],
@@ -302,7 +330,9 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: ready ? AppColors.mint : const Color(0xFF9AA3B0),
+                      color: ready
+                          ? AppColors.brandLight
+                          : AppColors.cameraMuted,
                       fontSize: 12,
                     ),
                   ),
@@ -318,8 +348,8 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                               color: AppColors.cameraOverlay,
                               border: Border.all(
                                 color: ready
-                                    ? AppColors.mint
-                                    : const Color(0xFF5A6473),
+                                    ? AppColors.brandLight
+                                    : const Color(0xFF4A443A),
                                 width: 2,
                               ),
                               borderRadius: BorderRadius.circular(16),
@@ -357,7 +387,9 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                                     height: 300,
                                     decoration: BoxDecoration(
                                       border: Border.all(
-                                        color: AppColors.white
+                                        color: (ready
+                                                ? AppColors.brandLight
+                                                : AppColors.white)
                                             .withValues(alpha: 0.85),
                                         width: 2,
                                       ),
@@ -373,8 +405,8 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                                       '$_countdown',
                                       style: const TextStyle(
                                         color: AppColors.white,
-                                        fontSize: 72,
-                                        fontWeight: FontWeight.w700,
+                                        fontSize: 88,
+                                        fontWeight: FontWeight.w800,
                                       ),
                                     ),
                                   ),
@@ -395,15 +427,22 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                     session: state.session,
                   ),
                   const Gap(16),
-                  PrimaryButton(
-                    enabled: ready && !_capturing && !_initializing,
-                    onPressed: _capturePhoto,
-                    child: Text(
-                      _capturing
-                          ? 'Menyimpan...'
-                          : (ready ? 'AMBIL FOTO' : 'SESUEKAN POSISI'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  SizedBox(
+                    width: double.infinity,
+                    child: SecondaryButton(
+                      alignment: Alignment.center,
+                      enabled: ready && !_capturing && !_initializing,
+                      onPressed: _capturePhoto,
+                      leading: Icon(
+                        _capturing ? LucideIcons.loader : LucideIcons.camera,
+                      ),
+                      child: Text(
+                        _capturing
+                            ? 'Menyimpan...'
+                            : (ready ? 'Ambil Foto' : 'Sesuaikan Posisi'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ],
@@ -417,33 +456,46 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.ok});
+  const _StatusChip({
+    required this.label,
+    required this.icon,
+    required this.ok,
+  });
 
   final String label;
+  final IconData icon;
   final bool ok;
 
   @override
   Widget build(BuildContext context) {
+    final color = ok ? AppColors.brandLight : AppColors.cameraMuted;
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: ok ? AppColors.mint : const Color(0xFF9AA3B0),
-          ),
-          borderRadius: BorderRadius.circular(6),
-          color: ok ? AppColors.mint.withValues(alpha: 0.12) : null,
+          border: Border.all(color: color.withValues(alpha: ok ? 1 : 0.5)),
+          borderRadius: BorderRadius.circular(99),
+          color: ok ? AppColors.brandLight.withValues(alpha: 0.14) : null,
         ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: ok ? AppColors.mint : const Color(0xFF9AA3B0),
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(ok ? LucideIcons.check : icon, size: 13, color: color),
+            const Gap(5),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

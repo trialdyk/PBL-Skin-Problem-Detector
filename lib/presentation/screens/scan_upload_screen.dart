@@ -4,7 +4,6 @@ import 'package:pbl_skin_problem_detector/business/cubit/scan_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
 import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
 import 'package:pbl_skin_problem_detector/data/services/image_pick_service.dart';
-import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/selfie_slot.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -37,8 +36,13 @@ class _ScanUploadScreenState extends State<ScanUploadScreen> {
   Widget build(BuildContext context) {
     return BlocBuilder<ScanCubit, ScanState>(
       builder: (context, state) {
+        final count = [
+          state.session.frontPath,
+          state.session.leftPath,
+          state.session.rightPath,
+        ].where((p) => p != null).length;
+
         return Scaffold(
-          backgroundColor: AppColors.surface,
           headers: [
             AppBar(
               leading: [
@@ -48,17 +52,22 @@ class _ScanUploadScreenState extends State<ScanUploadScreen> {
                 ),
               ],
               title: const Text('Unggah 3 Selfie'),
+              trailing: [
+                count == 3
+                    ? PrimaryBadge(child: Text('$count/3'))
+                    : OutlineBadge(child: Text('$count/3')),
+              ],
             ),
+            const Divider(),
           ],
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Pilih foto depan, kiri, dan kanan dari galeri.',
-                  style: TextStyle(color: Color(0xFF7A8494)),
-                ),
+                const Text('Pilih foto depan, kiri, dan kanan dari galeri.').muted,
+                const Gap(16),
+                Progress(progress: count / 3),
                 const Gap(20),
                 Expanded(
                   child: Row(
@@ -90,20 +99,22 @@ class _ScanUploadScreenState extends State<ScanUploadScreen> {
                   ),
                 ),
                 if (state.errorMessage != null) ...[
-                  const Gap(8),
-                  Text(
-                    state.errorMessage!,
-                    style: const TextStyle(color: AppColors.blush),
+                  const Gap(12),
+                  Alert.destructive(
+                    leading: const Icon(LucideIcons.circleAlert),
+                    title: Text(state.errorMessage!),
                   ),
                 ],
                 const Gap(16),
                 PrimaryButton(
+                  alignment: Alignment.center,
                   enabled: state.hasAllPhotos,
+                  trailing: const Icon(LucideIcons.arrowRight),
                   onPressed: () {
                     context.read<ScanCubit>().goToConfirm();
                     context.go('/scan/confirm');
                   },
-                  child: const Text('LANJUTKAN'),
+                  child: const Text('Lanjutkan'),
                 ),
               ],
             ),

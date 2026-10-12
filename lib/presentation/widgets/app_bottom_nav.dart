@@ -1,4 +1,10 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:pbl_skin_problem_detector/business/cubit/scan_cubit.dart';
+import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
+import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
+import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class AppBottomNav extends StatelessWidget {
@@ -8,77 +14,124 @@ class AppBottomNav extends StatelessWidget {
     required this.onChanged,
   });
 
+  /// Indeks item aktif; `-1` bila tidak ada item yang aktif.
   final int currentIndex;
   final ValueChanged<int> onChanged;
 
+  static const _items = <(IconData, String)>[
+    (LucideIcons.house, 'Beranda'),
+    (LucideIcons.camera, 'Foto'),
+    (LucideIcons.clipboardList, 'Wawancara'),
+    (LucideIcons.chartColumn, 'Laporan GEA'),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final items = <(IconData, String)>[
-      (LucideIcons.house, 'Beranda'),
-      (LucideIcons.newspaper, 'Artikel'),
-      (LucideIcons.user, 'Profil'),
-    ];
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
       decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE5E9EF))),
+        color: AppColors.page,
+        border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: SafeArea(
-        top: false,
+      child: SizedBox(
+        height: 56,
         child: Row(
-          children: List.generate(items.length, (index) {
-            final selected = index == currentIndex;
-            final item = items[index];
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => onChanged(index),
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: selected ? 12 : 8,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected ? AppColors.slate : null,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        item.$1,
-                        size: 20,
-                        color: selected
-                            ? AppColors.white
-                            : const Color(0xFF9AA3B0),
-                      ),
-                      if (selected) ...[
-                        const Gap(6),
-                        Flexible(
-                          child: Text(
-                            item.$2,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
+          children: [
+            for (var i = 0; i < _items.length; i++)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onChanged(i),
+                  behavior: HitTestBehavior.opaque,
+                  child: _NavItem(
+                    icon: _items[i].$1,
+                    label: _items[i].$2,
+                    selected: i == currentIndex,
                   ),
                 ),
               ),
-            );
-          }),
+          ],
         ),
       ),
     );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppColors.brand : AppColors.inkMuted;
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 20, color: color),
+        const Gap(4),
+        Text(
+          label,
+          maxLines: 1,
+          style: appFont(
+            fontSize: 10.5,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Indeks item di [AppBottomNav].
+abstract final class NavIndex {
+  static const home = 0;
+  static const photo = 1;
+  static const interview = 2;
+  static const report = 3;
+}
+
+/// Navigasi bersama untuk bottom nav. [current] adalah item yang sedang
+/// aktif; [onHome] menggantikan perpindahan ke `/home` bila layar saat ini
+/// sudah berada di home.
+void handleBottomNavTap(
+  BuildContext context,
+  int index, {
+  required int current,
+  VoidCallback? onHome,
+}) {
+  final scan = context.read<ScanCubit>();
+
+  switch (index) {
+    case NavIndex.home:
+      if (onHome != null) {
+        onHome();
+      } else {
+        context.go('/home');
+      }
+    case NavIndex.photo:
+      if (current != NavIndex.photo) context.push('/scan');
+    case NavIndex.interview:
+      if (scan.state.phase == ScanPhase.interviewing) {
+        context.go('/scan/interview');
+      } else if (scan.state.session.hasAllPhotos) {
+        scan.continueToInterview();
+        context.go('/scan/interview');
+      } else {
+        showHint(context, 'Ambil ketiga foto wajah terlebih dahulu.');
+      }
+    case NavIndex.report:
+      if (scan.state.result != null) {
+        context.push('/scan/result');
+      } else {
+        showHint(context, 'Belum ada hasil. Selesaikan pemeriksaan dahulu.');
+      }
   }
 }

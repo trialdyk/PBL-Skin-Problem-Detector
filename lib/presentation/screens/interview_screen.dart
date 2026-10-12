@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
 import 'package:pbl_skin_problem_detector/data/models/interview_answers.dart';
-import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/chat_bubbles.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -22,22 +21,24 @@ class InterviewScreen extends StatelessWidget {
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: AppColors.surface,
           headers: [
             AppBar(
-              title: const Text('PROFIL KULIT ANDA'),
+              title: const Text('Profil Kulit Anda'),
+              subtitle: const Text('Interview singkat'),
               trailing: [
                 GhostButton(
                   onPressed: () => context.read<ScanCubit>().skipInterview(),
+                  trailing: const Icon(LucideIcons.skipForward),
                   child: const Text('Lewati'),
                 ),
               ],
             ),
+            const Divider(),
           ],
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                 child: InterviewStepProgress(currentStep: state.interviewStep),
               ),
               Expanded(
@@ -48,18 +49,7 @@ class InterviewScreen extends StatelessWidget {
                       message.fromBot
                           ? ChatBubbleBot(text: message.text)
                           : ChatBubbleUser(text: message.text),
-                    if (state.isTyping)
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          '•••',
-                          style: TextStyle(
-                            color: Color(0xFF9AA3B0),
-                            fontSize: 22,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                      ),
+                    if (state.isTyping) const ChatTypingBubble(),
                   ],
                 ),
               ),
@@ -129,24 +119,36 @@ class _AnswerPanel extends StatelessWidget {
 
     if (options.isEmpty) return const SizedBox.shrink();
 
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE5E9EF))),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+      decoration: BoxDecoration(
+        color: scheme.card,
+        border: Border(top: BorderSide(color: scheme.border)),
       ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: options
-            .map(
-              (option) => SecondaryButton(
-                onPressed: option.onTap,
-                child: Text(option.label),
-              ),
-            )
-            .toList(),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Pilih jawabanmu').xSmall.muted,
+            const Gap(10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: options
+                  .map(
+                    (option) => OutlineButton(
+                      onPressed: option.onTap,
+                      child: Text(option.label),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ),
       ),
     );
   }

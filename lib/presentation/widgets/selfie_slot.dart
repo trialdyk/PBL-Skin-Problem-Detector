@@ -24,6 +24,9 @@ class SelfieSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final filled = path != null;
+
     return GestureDetector(
       onTap: onPick,
       child: Column(
@@ -32,31 +35,54 @@ class SelfieSlot extends StatelessWidget {
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: AppColors.sand.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFD5DBE3)),
-                image: path != null
+                color: scheme.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: filled ? scheme.primary : scheme.border,
+                  width: filled ? 2 : 1,
+                ),
+                image: filled
                     ? DecorationImage(
                         image: FileImage(File(path!)),
                         fit: BoxFit.cover,
                       )
                     : null,
               ),
-              child: path == null
-                  ? const Center(
-                      child: Icon(LucideIcons.camera, color: AppColors.slate),
+              child: filled
+                  ? Align(
+                      alignment: Alignment.topRight,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: scheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            LucideIcons.check,
+                            size: 14,
+                            color: scheme.primaryForeground,
+                          ),
+                        ),
+                      ),
                     )
-                  : null,
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          LucideIcons.imagePlus,
+                          color: AppColors.brand,
+                        ),
+                        const Gap(6),
+                        const Text('Pilih').xSmall.muted,
+                      ],
+                    ),
             ),
           ),
           const Gap(8),
-          Text(
-            _label,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: AppColors.slate,
-            ),
-          ),
+          Text(_label).small.semiBold,
         ],
       ),
     );

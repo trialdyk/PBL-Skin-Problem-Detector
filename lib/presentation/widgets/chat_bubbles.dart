@@ -1,4 +1,5 @@
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
+import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class ChatBubbleBot extends StatelessWidget {
@@ -8,32 +9,33 @@ class ChatBubbleBot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12, right: 48),
+      padding: const EdgeInsets.only(bottom: 12, right: 40),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: AppColors.mint,
-              borderRadius: BorderRadius.circular(6),
-            ),
+          const IconTile(
+            icon: LucideIcons.sparkles,
+            size: 32,
+            iconSize: 16,
+            circle: true,
           ),
           const Gap(8),
-          Expanded(
+          Flexible(
             child: Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E9EF)),
+                color: scheme.card,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(18),
+                  topRight: Radius.circular(18),
+                  bottomRight: Radius.circular(18),
+                  bottomLeft: Radius.circular(4),
+                ),
+                border: Border.all(color: scheme.border),
               ),
-              child: Text(
-                text,
-                style: const TextStyle(color: AppColors.slate, height: 1.4),
-              ),
+              child: Text(text).base,
             ),
           ),
         ],
@@ -49,30 +51,87 @@ class ChatBubbleUser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12, left: 48),
+      padding: const EdgeInsets.only(bottom: 12, left: 56),
       child: Align(
         alignment: Alignment.centerRight,
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: AppColors.mint,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.slate,
-              fontWeight: FontWeight.w600,
-              height: 1.4,
+            color: scheme.primary,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(18),
+              topRight: Radius.circular(18),
+              bottomLeft: Radius.circular(18),
+              bottomRight: Radius.circular(4),
             ),
           ),
+          child: Text(text).base.medium.primaryForeground,
         ),
       ),
     );
   }
 }
 
+class ChatTypingBubble extends StatelessWidget {
+  const ChatTypingBubble({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          const IconTile(
+            icon: LucideIcons.sparkles,
+            size: 32,
+            iconSize: 16,
+            circle: true,
+          ),
+          const Gap(8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: scheme.card,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: scheme.border),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _Dot(),
+                Gap(4),
+                _Dot(),
+                Gap(4),
+                _Dot(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  const _Dot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: const BoxDecoration(
+        color: AppColors.inkMuted,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+/// Progress interview: "Pertanyaan x dari n" + bar shadcn.
 class InterviewStepProgress extends StatelessWidget {
   const InterviewStepProgress({
     super.key,
@@ -85,21 +144,20 @@ class InterviewStepProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(total, (index) {
-        final done = index < currentStep;
-        final active = index == currentStep;
-        return Expanded(
-          child: Container(
-            margin: EdgeInsets.only(right: index == total - 1 ? 0 : 6),
-            height: 6,
-            decoration: BoxDecoration(
-              color: done || active ? AppColors.mint : const Color(0xFFD5DBE3),
-              borderRadius: BorderRadius.circular(99),
-            ),
-          ),
-        );
-      }),
+    final step = currentStep.clamp(0, total);
+    final shown = (step + 1).clamp(1, total);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text('Pertanyaan $shown dari $total').small.muted),
+            Text('${((step / total) * 100).round()}%').small.semiBold,
+          ],
+        ),
+        const Gap(8),
+        Progress(progress: step / total),
+      ],
     );
   }
 }

@@ -6,17 +6,9 @@ class GeaScaleBar extends StatelessWidget {
 
   final int activeGrade;
 
-  static const _fills = <Color>[
-    AppColors.white,
-    Color(0xFFD7EFF0),
-    AppColors.mint,
-    Color(0xFF8BC4C7),
-    AppColors.slate,
-    Color(0xFF3E4652),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: List.generate(6, (grade) {
@@ -24,25 +16,37 @@ class GeaScaleBar extends StatelessWidget {
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              height: isActive ? 64 : 48,
-              decoration: BoxDecoration(
-                color: _fills[grade],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isActive ? AppColors.slate : const Color(0xFFD5DBE3),
-                  width: isActive ? 2 : 1,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  height: isActive ? 60 : 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.gradeColor(grade)
+                        .withValues(alpha: isActive ? 1 : 0.55),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isActive ? scheme.foreground : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$grade',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onGrade(grade),
+                    ),
+                  ),
                 ),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                '$grade',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: grade >= 4 ? AppColors.white : AppColors.slate,
+                const Gap(6),
+                Icon(
+                  LucideIcons.chevronUp,
+                  size: 14,
+                  color: isActive ? scheme.foreground : Colors.transparent,
                 ),
-              ),
+              ],
             ),
           ),
         );

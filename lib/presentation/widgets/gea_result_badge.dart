@@ -9,31 +9,60 @@ class GeaResultBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppColors.gradeColor(result.grade);
+    final fg = AppColors.onGrade(result.grade);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
       decoration: BoxDecoration(
-        color: AppColors.mint,
-        borderRadius: BorderRadius.circular(8),
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: [
-          Text(
-            result.badgeTitle,
-            style: const TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.w800,
-              color: AppColors.slate,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: fg.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Text(
+              'Global Evaluation of Acne',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4,
+                color: fg,
+              ),
             ),
           ),
-          const Gap(6),
+          const Gap(14),
           Text(
-            result.badgeSubtitle,
-            style: const TextStyle(
-              fontSize: 14,
+            '${result.grade}',
+            style: TextStyle(
+              fontSize: 72,
+              height: 1,
+              fontWeight: FontWeight.w800,
+              color: fg,
+            ),
+          ),
+          const Gap(10),
+          Text(
+            result.labelId,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 22,
               fontWeight: FontWeight.w700,
-              letterSpacing: 1.1,
-              color: AppColors.slate,
+              color: fg,
+            ),
+          ),
+          const Gap(2),
+          Text(
+            result.labelEn,
+            style: TextStyle(
+              fontSize: 13,
+              color: fg.withValues(alpha: 0.75),
             ),
           ),
         ],
