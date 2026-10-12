@@ -57,15 +57,12 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context, state) {
         final loading = state.status == AuthStatus.loading;
         final cubit = context.read<AuthCubit>();
-
         return Scaffold(
           backgroundColor: AppColors.page,
           child: SafeArea(
             child: Column(
               children: [
-                _Header(
-                  onBack: loading ? null : () => context.go('/welcome'),
-                ),
+                _Header(onBack: loading ? null : () => context.go('/welcome')),
                 Expanded(
                   child: Align(
                     alignment: Alignment.topCenter,
@@ -87,26 +84,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const Gap(8),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 40),
-                              child: Text(
-                                'Akses riwayat deteksi lesi kulit, arsip '
-                                'dermoskopik, dan laporan skala GEA Anda.',
-                                textAlign: TextAlign.center,
-                                style: appFont(
-                                  fontSize: 12,
-                                  color: AppColors.inkMuted,
-                                  height: 1.6,
-                                ),
-                              ),
-                            ),
                             const Gap(22),
                             _buildFormCard(state, loading, cubit),
                             const Gap(22),
-                            const _EncryptionNote(),
-                            const Gap(20),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -251,12 +231,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   static TextSpan _linkSpan(String text) => TextSpan(
-        text: text,
-        style: appFont(
-          color: AppColors.brand,
-          fontWeight: FontWeight.w600,
-        ),
-      );
+    text: text,
+    style: appFont(color: AppColors.brand, fontWeight: FontWeight.w600),
+  );
 }
 
 /// Header blush dengan garis tipis; tombol kembali + identitas aplikasi.
@@ -276,20 +253,12 @@ class _Header extends StatelessWidget {
       ),
       child: Row(
         children: [
-          GhostButton(
-            onPressed: onBack,
-            density: ButtonDensity.icon,
-            child: const Icon(LucideIcons.arrowLeft),
-          ),
-          const Spacer(),
-          const Text('SkinScan ID').semiBold,
-          const Gap(12),
           Container(
             width: 40,
             height: 40,
             decoration: const BoxDecoration(
               color: AppColors.brand,
-              shape: BoxShape.circle,
+              shape: BoxShape.rectangle,
             ),
             child: const Icon(
               LucideIcons.user,
@@ -297,6 +266,8 @@ class _Header extends StatelessWidget {
               color: AppColors.white,
             ),
           ),
+          const Gap(12),
+          const Text('SkinScan ID').semiBold,
           const Gap(4),
         ],
       ),
@@ -399,40 +370,6 @@ class _OrDivider extends StatelessWidget {
         ),
         const Expanded(child: Divider(color: AppColors.border)),
       ],
-    );
-  }
-}
-
-/// Pil blush ber-border: catatan enkripsi data medis.
-class _EncryptionNote extends StatelessWidget {
-  const _EncryptionNote();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.muted,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.shield, size: 16, color: AppColors.brand),
-          const Gap(12),
-          Expanded(
-            child: Text(
-              'Enkripsi Data Medis End-to-End '
-              '(HIPAA & Permenkes RI Compliant)',
-              style: appFont(
-                fontSize: 11,
-                height: 1.4,
-                color: AppColors.inkMuted,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
