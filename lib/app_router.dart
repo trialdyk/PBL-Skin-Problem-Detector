@@ -7,6 +7,8 @@ import 'package:pbl_skin_problem_detector/business/cubit/auth_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/auth_state.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/home_cubit.dart';
 import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
+import 'package:pbl_skin_problem_detector/data/models/article_item.dart';
+import 'package:pbl_skin_problem_detector/presentation/screens/article_detail_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/diagnosis_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/home_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/interview_screen.dart';
@@ -29,7 +31,7 @@ GoRouter createRouter(AuthCubit authCubit) {
       final location = state.matchedLocation;
       final isPublic = publicRoutes.contains(location);
 
-      if (!loggedIn && !isPublic) return '/welcome';
+      if (!loggedIn && !isPublic) return '/splash';
       if (loggedIn && isPublic) return '/home';
       return null;
     },
@@ -52,6 +54,24 @@ GoRouter createRouter(AuthCubit authCubit) {
           create: (_) => HomeCubit(),
           child: const HomeScreen(),
         ),
+      ),
+      GoRoute(
+        path: '/articles/detail',
+        builder: (context, state) {
+          final article = state.extra;
+          return ArticleDetailScreen(
+            article: article is ArticleItem
+                ? article
+                : const ArticleItem(
+                    category: 'Info',
+                    title: 'Artikel tidak ditemukan',
+                    body:
+                        'Kembali dan pilih artikel dari daftar untuk melihat detail.',
+                    readTime: '-',
+                    image: 'assets/images/acne_people.png',
+                  ),
+          );
+        },
       ),
       GoRoute(
         path: '/scan',

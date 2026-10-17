@@ -3,89 +3,165 @@ import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
-import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+/// Floating pill bottom bar + FAB scan di tengah.
 class AppBottomNav extends StatelessWidget {
   const AppBottomNav({
     super.key,
     required this.currentIndex,
     required this.onChanged,
+    this.onProfile,
+    this.profileSelected = false,
   });
 
   /// Indeks item aktif; `-1` bila tidak ada item yang aktif.
   final int currentIndex;
   final ValueChanged<int> onChanged;
 
-  static const _items = <(IconData, String)>[
-    (LucideIcons.house, 'Beranda'),
-    (LucideIcons.camera, 'Foto'),
-    (LucideIcons.clipboardList, 'Wawancara'),
-    (LucideIcons.chartColumn, 'Laporan GEA'),
-  ];
+  /// Slot kanan (profil). Opsional.
+  final VoidCallback? onProfile;
+  final bool profileSelected;
+
+  static const double _barHeight = 62;
+  static const double _fabSize = 62;
+  static const double _fabOverlap = 18;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
-      decoration: const BoxDecoration(
-        color: AppColors.page,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: SizedBox(
-        height: 56,
-        child: Row(
-          children: [
-            for (var i = 0; i < _items.length; i++)
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => onChanged(i),
-                  behavior: HitTestBehavior.opaque,
-                  child: _NavItem(
-                    icon: _items[i].$1,
-                    label: _items[i].$2,
-                    selected: i == currentIndex,
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    final totalHeight = _barHeight + _fabOverlap;
+
+    return ColoredBox(
+      color: Colors.transparent,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(22, 8, 22, bottom > 0 ? bottom : 14),
+        child: SizedBox(
+          height: totalHeight,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.bottomCenter,
+            children: [
+              // Pill bar
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  height: _barHeight,
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.ink.withValues(alpha: 0.10),
+                        blurRadius: 28,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 10),
+                      ),
+                      BoxShadow(
+                        color: AppColors.brand.withValues(alpha: 0.06),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _NavIcon(
+                            icon: LucideIcons.house,
+                            selected: currentIndex == NavIndex.home,
+                            onTap: () => onChanged(NavIndex.home),
+                          ),
+                        ),
+                        Expanded(
+                          child: _NavIcon(
+                            icon: LucideIcons.clipboardList,
+                            selected: currentIndex == NavIndex.interview,
+                            onTap: () => onChanged(NavIndex.interview),
+                          ),
+                        ),
+                        const Expanded(child: SizedBox()),
+                        Expanded(
+                          child: _NavIcon(
+                            icon: LucideIcons.chartColumn,
+                            selected: currentIndex == NavIndex.report,
+                            onTap: () => onChanged(NavIndex.report),
+                          ),
+                        ),
+                        Expanded(
+                          child: _NavIcon(
+                            icon: LucideIcons.user,
+                            selected: profileSelected,
+                            onTap: onProfile,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-          ],
+              // FAB scan — mengambang di atas pill
+              Positioned(
+                top: 0,
+                child: GestureDetector(
+                  onTap: () => onChanged(NavIndex.photo),
+                  child: Container(
+                    width: _fabSize,
+                    height: _fabSize,
+                    decoration: BoxDecoration(
+                      color: AppColors.brand,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.white, width: 4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.brand.withValues(alpha: 0.40),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      LucideIcons.scanFace,
+                      size: 26,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-  });
+class _NavIcon extends StatelessWidget {
+  const _NavIcon({required this.icon, required this.selected, this.onTap});
 
   final IconData icon;
-  final String label;
   final bool selected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.brand : AppColors.inkMuted;
+    final color = selected ? AppColors.brand : AppColors.ink;
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 20, color: color),
-        const Gap(4),
-        Text(
-          label,
-          maxLines: 1,
-          style: appFont(
-            fontSize: 10.5,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            color: color,
-          ),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Center(
+        child: AnimatedScale(
+          scale: selected ? 1.08 : 1.0,
+          duration: const Duration(milliseconds: 180),
+          child: Icon(icon, size: 23, color: color),
         ),
-      ],
+      ),
     );
   }
 }

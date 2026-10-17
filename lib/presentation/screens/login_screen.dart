@@ -187,7 +187,17 @@ class _LoginScreenState extends State<LoginScreen> {
           child: SafeArea(
             child: Column(
               children: [
-                _Header(onBack: loading ? null : () => context.go('/welcome')),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: _BackCircleButton(
+                      onPressed: loading
+                          ? null
+                          : () => context.go('/welcome'),
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -207,14 +217,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Align(child: _ClinicalBadge()),
-                          Gap(s(12)),
                           Text(
                             'Masuk ke Akun Anda',
-                            textAlign: TextAlign.center,
+                            textAlign: TextAlign.left,
                             style: appFont(
-                              fontSize: s(21.5),
-                              fontWeight: FontWeight.w700,
+                              fontSize: s(24),
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.ink,
+                              height: 1.2,
+                            ),
+                          ),
+                          Gap(s(6)),
+                          Text(
+                            'Masukkan email dan kata sandi untuk melanjutkan.',
+                            style: appFont(
+                              fontSize: s(13.5),
+                              color: AppColors.inkMuted,
+                              height: 1.4,
                             ),
                           ),
                           // Panel galat kredensial dari service: berada di
@@ -226,9 +245,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               title: Text(state.errorMessage!),
                             ),
                           ],
-                          Gap(s(22)),
+                          Gap(s(20)),
                           _buildFormCard(loading, cubit, s),
-                          Gap(s(22)),
+                          Gap(s(20)),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -346,15 +365,8 @@ class _LoginScreenState extends State<LoginScreen> {
       padding: EdgeInsets.all(s(16)),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(s(18)),
+        borderRadius: BorderRadius.circular(s(16)),
         border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0x14BE185D),
-            blurRadius: s(24),
-            offset: Offset(0, s(8)),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -452,7 +464,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 _linkSpan('Syarat & Ketentuan'),
                 const TextSpan(text: ' serta '),
                 _linkSpan('Kebijakan Privasi'),
-                const TextSpan(text: ' SkinScan ID.'),
+                const TextSpan(text: ' aplikasi ini.'),
               ],
             ),
             textAlign: TextAlign.center,
@@ -468,79 +480,37 @@ class _LoginScreenState extends State<LoginScreen> {
   );
 }
 
-/// Header blush dengan garis tipis; tombol kembali + identitas aplikasi.
-class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
+class _BackCircleButton extends StatelessWidget {
+  const _BackCircleButton({this.onPressed});
 
-  final VoidCallback? onBack;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: const BoxDecoration(
-        color: AppColors.page,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: AppColors.brand,
-              shape: BoxShape.rectangle,
-            ),
-            child: const Icon(
-              LucideIcons.user,
-              size: 20,
-              color: AppColors.white,
-            ),
+    return Opacity(
+      opacity: onPressed == null ? 0.45 : 1,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.border),
           ),
-          const Gap(12),
-          const Text('SkinScan ID').semiBold,
-          const Gap(4),
-        ],
+          child: const Icon(
+            LucideIcons.arrowLeft,
+            size: 18,
+            color: AppColors.ink,
+          ),
+        ),
       ),
     );
   }
 }
 
-/// Chip pink "Pemeriksaan klinis skala GEA".
-class _ClinicalBadge extends StatelessWidget {
-  const _ClinicalBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.muted,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(LucideIcons.badgeCheck, size: 16, color: AppColors.brand),
-          const Gap(8),
-          Text(
-            'PEMERIKSAAN KLINIS SKALA GEA',
-            style: appFont(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
-              color: AppColors.brand,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Checkbox bulat pink + label "Ingat saya".
+/// Checkbox kecil proporsional dengan label "Ingat saya".
 class _RememberMe extends StatelessWidget {
   const _RememberMe({required this.value, required this.onChanged});
 
@@ -556,24 +526,25 @@ class _RememberMe extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 24,
-            height: 24,
+            width: 16,
+            height: 16,
             decoration: BoxDecoration(
-              color: value ? AppColors.brand : AppColors.brandSoft,
-              shape: BoxShape.circle,
+              color: value ? AppColors.brand : AppColors.white,
+              borderRadius: BorderRadius.circular(4),
               border: Border.all(
                 color: value ? AppColors.brand : AppColors.border,
+                width: 1.4,
               ),
             ),
             child: value
                 ? const Icon(
                     LucideIcons.check,
-                    size: 14,
+                    size: 11,
                     color: AppColors.white,
                   )
                 : null,
           ),
-          const Gap(10),
+          const Gap(8),
           Text(
             'Ingat saya',
             style: appFont(fontSize: 13, color: AppColors.inkMuted),

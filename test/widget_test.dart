@@ -7,17 +7,27 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 Widget _welcomeApp() =>
     ShadcnApp(theme: AppTheme.light, home: const WelcomeScreen());
 
+/// Tunggu sequence reveal fitur (3 × 1s) + CTA.
+Future<void> _waitWelcomeReady(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(seconds: 4));
+  await tester.pumpAndSettle();
+}
+
 void main() {
-  testWidgets('Splash screen renders lalu menuju welcome', (tester) async {
+  testWidgets('Splash screen renders lalu menuju welcome via Mulai', (
+    tester,
+  ) async {
     await tester.pumpWidget(const SkinProblemDetectorApp());
     await tester.pump();
 
-    expect(find.textContaining('Skin Problem Detector'), findsOneWidget);
+    expect(find.text('The Perfect'), findsOneWidget);
+    expect(find.text('Mulai'), findsOneWidget);
 
-    await tester.pump(const Duration(milliseconds: 1900));
-    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mulai'));
+    await _waitWelcomeReady(tester);
 
-    expect(find.text('Mulai Sekarang'), findsOneWidget);
+    expect(find.text('Coba Scan Wajah'), findsOneWidget);
   });
 
   testWidgets('Welcome muat tanpa overflow di berbagai ukuran layar', (
@@ -39,7 +49,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(_welcomeApp());
-      await tester.pumpAndSettle();
+      await _waitWelcomeReady(tester);
 
       expect(
         tester.takeException(),
@@ -47,7 +57,7 @@ void main() {
         reason: 'Terjadi overflow pada ukuran ${size.width}x${size.height}',
       );
       expect(
-        find.text('Mulai Sekarang'),
+        find.text('Coba Scan Wajah'),
         findsOneWidget,
         reason: 'Tombol CTA harus tetap terlihat pada ${size.height}px',
       );
@@ -56,7 +66,7 @@ void main() {
 
   testWidgets('Welcome tidak scrollable', (tester) async {
     await tester.pumpWidget(_welcomeApp());
-    await tester.pumpAndSettle();
+    await _waitWelcomeReady(tester);
 
     expect(
       find.descendant(

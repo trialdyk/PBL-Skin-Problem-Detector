@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/auth_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/home_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/home_state.dart';
+import 'package:pbl_skin_problem_detector/business/cubit/scan_cubit.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/articles_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
@@ -11,7 +12,7 @@ import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart'
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Indeks tab di [HomeCubit]. Profil & Artikel tidak ada di bottom nav;
-/// dibuka lewat avatar dan kartu "Tentang Skala GEA".
+/// dibuka lewat avatar / quick action / kartu "Untukmu".
 const _tabHome = 0;
 const _tabArticles = 1;
 const _tabProfile = 2;
@@ -28,12 +29,14 @@ class HomeScreen extends StatelessWidget {
           footers: [
             AppBottomNav(
               currentIndex: state.tabIndex == _tabHome ? 0 : -1,
+              profileSelected: state.tabIndex == _tabProfile,
               onChanged: (index) => handleBottomNavTap(
                 context,
                 index,
                 current: NavIndex.home,
                 onHome: () => context.read<HomeCubit>().setTab(_tabHome),
               ),
+              onProfile: () => context.read<HomeCubit>().setTab(_tabProfile),
             ),
           ],
           child: switch (state.tabIndex) {
@@ -63,14 +66,6 @@ String _capitalize(String value) {
   return value[0].toUpperCase() + value.substring(1);
 }
 
-String _greeting(DateTime now) {
-  final hour = now.hour;
-  if (hour < 11) return 'Selamat pagi';
-  if (hour < 15) return 'Selamat siang';
-  if (hour < 18) return 'Selamat sore';
-  return 'Selamat malam';
-}
-
 EdgeInsets _pagePadding(BuildContext context) => EdgeInsets.fromLTRB(
   20,
   MediaQuery.paddingOf(context).top + 16,
@@ -87,104 +82,131 @@ class _HomeTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final email = context.watch<AuthCubit>().state.user?.email;
     final name = _capitalize(_nameFromEmail(email));
+    final scan = context.watch<ScanCubit>().state;
+    final photosDone = [
+      scan.session.frontPath,
+      scan.session.leftPath,
+      scan.session.rightPath,
+    ].whereType<String>().length;
+    final progress = (photosDone / 3).clamp(0.0, 1.0);
+    final progressPct = (progress * 100).round();
 
-    return Column(
-      children: [
-        AppHeader(
-          onProfile: () => context.read<HomeCubit>().setTab(_tabProfile),
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.muted,
+            AppColors.page,
+            Color(0xFFFFF8FA),
+          ],
         ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-            children: [
-              const _ProtocolRow(),
-              const Gap(14),
-              Text(
-                '${_greeting(DateTime.now())}, $name',
-                style: appFont(fontSize: 17, fontWeight: FontWeight.w700),
-              ),
-              const Gap(6),
-              Text(
-                'Pantau evolusi lesi kulit dan tingkat keparahan jerawat '
-                'Anda secara terukur berbasis standar dermatologi klinis.',
-                style: appFont(
-                  fontSize: 12,
-                  color: AppColors.inkMuted,
-                  height: 1.65,
-                ),
-              ),
-              const Gap(16),
-              _NewExamCard(onStart: () => context.push('/scan')),
-              const Gap(16),
-              const _LatestResultCard(),
-              const Gap(24),
-              const _ValidationSection(),
-              const Gap(14),
-              _AboutGeaCard(
-                onTap: () => context.read<HomeCubit>().setTab(_tabArticles),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ProtocolRow extends StatelessWidget {
-  const _ProtocolRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _Pill(
-          leading: Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              color: AppColors.brand,
-              shape: BoxShape.circle,
-            ),
-          ),
-          label: 'Protokol Klinis GEA 2.0',
-        ),
-        const Spacer(),
-        Text(
-          'ID Sesi: #SKN-8841',
-          style: appFont(fontSize: 11, color: AppColors.inkMuted),
-        ),
-      ],
-    );
-  }
-}
-
-/// Pil kecil bertepi pink.
-class _Pill extends StatelessWidget {
-  const _Pill({required this.label, this.leading});
-
-  final String label;
-  final Widget? leading;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.muted,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
         children: [
-          if (leading != null) ...[leading!, const Gap(6)],
-          Text(
-            label,
-            style: appFont(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.brand,
+          AppHeader(
+            onProfile: () => context.read<HomeCubit>().setTab(_tabProfile),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              children: [
+                Text.rich(
+                  TextSpan(
+                    style: appFont(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                      height: 1.2,
+                    ),
+                    children: [
+                      const TextSpan(text: 'Halo, '),
+                      TextSpan(
+                        text: name,
+                        style: appFont(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.brand,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Gap(6),
+                Text(
+                  'Mari rawat kulitmu hari ini',
+                  style: appFont(
+                    fontSize: 14,
+                    color: AppColors.inkMuted,
+                    height: 1.4,
+                  ),
+                ),
+                const Gap(20),
+                _RoutineCard(
+                  progress: progress,
+                  progressLabel: '$progressPct%',
+                  subtitle: photosDone == 0
+                      ? '3 langkah · Siap mulai'
+                      : '$photosDone/3 foto · Lanjutkan',
+                  onTap: () => context.push('/scan'),
+                ),
+                const Gap(16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _QuickAction(
+                        icon: LucideIcons.scanFace,
+                        label: 'AI scan',
+                        tint: AppColors.brandSoft,
+                        iconColor: AppColors.brand,
+                        onTap: () => context.push('/scan'),
+                      ),
+                    ),
+                    const Gap(10),
+                    Expanded(
+                      child: _QuickAction(
+                        icon: LucideIcons.bookOpen,
+                        label: 'Artikel',
+                        tint: const Color(0xFFE8F5E9),
+                        iconColor: const Color(0xFF2E7D32),
+                        onTap: () =>
+                            context.read<HomeCubit>().setTab(_tabArticles),
+                      ),
+                    ),
+                    const Gap(10),
+                    Expanded(
+                      child: _QuickAction(
+                        icon: LucideIcons.user,
+                        label: 'Profil',
+                        tint: AppColors.accentSoft,
+                        iconColor: AppColors.accent,
+                        onTap: () =>
+                            context.read<HomeCubit>().setTab(_tabProfile),
+                      ),
+                    ),
+                  ],
+                ),
+                const Gap(24),
+                _SectionHeader(
+                  title: 'Untukmu',
+                  action: 'Lihat semua',
+                  onAction: () =>
+                      context.read<HomeCubit>().setTab(_tabArticles),
+                ),
+                const Gap(12),
+                _ForYouCard(
+                  onTap: () => context.read<HomeCubit>().setTab(_tabArticles),
+                ),
+                const Gap(24),
+                _SectionHeader(
+                  title: 'Direkomendasikan',
+                  action: 'Lihat semua',
+                  onAction: () => showComingSoon(context),
+                ),
+                const Gap(12),
+                const _RecommendedCard(),
+              ],
             ),
           ),
         ],
@@ -193,466 +215,401 @@ class _Pill extends StatelessWidget {
   }
 }
 
-/// Panel blush bertepi pink — wadah kartu utama.
-class _Panel extends StatelessWidget {
-  const _Panel({required this.child, this.padding = 16, this.onTap});
+class _SoftCard extends StatelessWidget {
+  const _SoftCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.color = AppColors.white,
+    this.onTap,
+  });
 
   final Widget child;
-  final double padding;
+  final EdgeInsetsGeometry padding;
+  final Color color;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final panel = Container(
+    final card = Container(
       width: double.infinity,
-      padding: EdgeInsets.all(padding),
+      padding: padding,
       decoration: BoxDecoration(
-        color: AppColors.muted,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
+        color: color,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.ink.withValues(alpha: 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: child,
     );
-    if (onTap == null) return panel;
+    if (onTap == null) return card;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: panel,
+      child: card,
     );
   }
 }
 
-/// Tile putih bertepi pink di dalam panel.
-class _WhiteTile extends StatelessWidget {
-  const _WhiteTile({
-    required this.child,
-    this.highlighted = false,
-    this.padding = const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+class _RoutineCard extends StatelessWidget {
+  const _RoutineCard({
+    required this.progress,
+    required this.progressLabel,
+    required this.subtitle,
+    required this.onTap,
   });
 
-  final Widget child;
-  final bool highlighted;
-  final EdgeInsetsGeometry padding;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: highlighted ? AppColors.brandSoft : AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _NewExamCard extends StatelessWidget {
-  const _NewExamCard({required this.onStart});
-
-  final VoidCallback onStart;
-
-  @override
-  Widget build(BuildContext context) {
-    const steps = <(IconData, String, String)>[
-      (LucideIcons.camera, '1. Foto Makro', 'Depan & Samping'),
-      (LucideIcons.clipboardList, '2. Wawancara', '5 Menit Klinis'),
-      (LucideIcons.chartLine, '3. Skor GEA', 'Skala 0–5'),
-    ];
-
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: _Pill(label: 'Langkah Evaluasi'),
-                ),
-              ),
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Icon(
-                  LucideIcons.activity,
-                  size: 20,
-                  color: AppColors.brand,
-                ),
-              ),
-            ],
-          ),
-          const Gap(2),
-          Text(
-            'Mulai Pemeriksaan Baru',
-            style: appFont(fontSize: 15.5, fontWeight: FontWeight.w700),
-          ),
-          const Gap(6),
-          Text(
-            '3 langkah cepat: tangkap citra makro, respon anamnesis, dan '
-            'peroleh kalkulasi GEA instan.',
-            style: appFont(
-              fontSize: 12.2,
-              color: AppColors.inkMuted,
-              height: 1.5,
-            ),
-          ),
-          const Gap(14),
-          Row(
-            children: [
-              for (var i = 0; i < steps.length; i++) ...[
-                Expanded(
-                  child: _WhiteTile(
-                    child: Column(
-                      children: [
-                        Icon(steps[i].$1, size: 18, color: AppColors.brand),
-                        const Gap(6),
-                        Text(
-                          steps[i].$2,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: appFont(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Gap(1),
-                        Text(
-                          steps[i].$3,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: appFont(
-                            fontSize: 10,
-                            color: AppColors.inkMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (i != steps.length - 1) const Gap(8),
-              ],
-            ],
-          ),
-          const Gap(14),
-          AppButton(
-            label: 'Mulai Analisis Kulit',
-            trailingIcon: LucideIcons.arrowRight,
-            height: 44,
-            fontSize: 14,
-            onTap: onStart,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Hasil terbaru. Data contoh — riwayat pemeriksaan belum disimpan.
-class _LatestResultCard extends StatelessWidget {
-  const _LatestResultCard();
-
-  @override
-  Widget build(BuildContext context) {
-    const counts = <(String, String)>[
-      ('8', 'Komedo'),
-      ('3', 'Papula'),
-      ('0', 'Nodus'),
-    ];
-
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Hasil Paling Baru',
-                      style: appFont(fontSize: 9.5, color: AppColors.inkMuted),
-                    ),
-                    const Gap(1),
-                    Text(
-                      '12 Mei 2024',
-                      style: appFont(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const _Pill(label: 'Skor GEA: 2 (Ringan)'),
-            ],
-          ),
-          const Gap(12),
-          _WhiteTile(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Kuantifikasi Lesi Aktif Terdeteksi',
-                        style: appFont(
-                          fontSize: 11,
-                          color: AppColors.inkMuted,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '11 Titik',
-                      style: appFont(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                const Gap(10),
-                Row(
-                  children: [
-                    for (var i = 0; i < counts.length; i++) ...[
-                      Expanded(
-                        child: _WhiteTile(
-                          highlighted: i == 1,
-                          child: Column(
-                            children: [
-                              Text(
-                                counts[i].$1,
-                                style: appFont(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w700,
-                                  color: i == 1
-                                      ? AppColors.brand
-                                      : AppColors.ink,
-                                ),
-                              ),
-                              Text(
-                                counts[i].$2,
-                                style: appFont(
-                                  fontSize: 11,
-                                  color: i == 1
-                                      ? AppColors.brand
-                                      : AppColors.ink,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (i != counts.length - 1) const Gap(8),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Gap(12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(top: 3),
-                child: Icon(
-                  LucideIcons.trendingDown,
-                  size: 16,
-                  color: AppColors.brand,
-                ),
-              ),
-              const Gap(8),
-              Expanded(
-                child: Text(
-                  'Penurunan 24% lesi inflamasi dibanding pemeriksaan '
-                  'bulan April.',
-                  style: appFont(
-                    fontSize: 12,
-                    color: AppColors.inkMuted,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Gap(12),
-          AppButton(
-            label: 'Lihat Arsip Lengkap',
-            trailingIcon: LucideIcons.chevronRight,
-            tonal: true,
-            tonalForeground: AppColors.brand,
-            height: 40,
-            fontSize: 12.5,
-            onTap: () => showComingSoon(context),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ValidationSection extends StatelessWidget {
-  const _ValidationSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Text(
-              'Validasi & Standar',
-              style: appFont(fontSize: 15.5, fontWeight: FontWeight.w600),
-            ),
-            const Gap(8),
-            Expanded(
-              child: Text(
-                'WHO / FDA Approved Guidelines',
-                maxLines: 1,
-                textAlign: TextAlign.end,
-                overflow: TextOverflow.ellipsis,
-                style: appFont(fontSize: 11, color: AppColors.inkMuted),
-              ),
-            ),
-          ],
-        ),
-        const Gap(10),
-        const IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _StatCard(
-                  icon: LucideIcons.badgeCheck,
-                  value: '94.2%',
-                  title: 'Akurasi Anamnesis',
-                  body: 'Tervalidasi silang terhadap 1,200+ rekam histologis '
-                      'dokter spesialis.',
-                ),
-              ),
-              Gap(10),
-              Expanded(
-                child: _StatCard(
-                  icon: LucideIcons.clipboardList,
-                  value: 'GEA 0–5',
-                  title: 'Global Evaluation',
-                  body: 'Standarisasi klinis global untuk penentuan gradasi '
-                      'keparahan akne vulgaris.',
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.value,
-    required this.title,
-    required this.body,
-  });
-
-  final IconData icon;
-  final String value;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return _Panel(
-      padding: 14,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Icon(icon, size: 18, color: AppColors.brand),
-          ),
-          const Gap(12),
-          Text(
-            value,
-            style: appFont(fontSize: 17.5, fontWeight: FontWeight.w700),
-          ),
-          const Gap(1),
-          Text(
-            title,
-            style: appFont(fontSize: 11, fontWeight: FontWeight.w700),
-          ),
-          const Gap(5),
-          Text(
-            body,
-            style: appFont(
-              fontSize: 9.75,
-              height: 1.4,
-              color: AppColors.inkMuted,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AboutGeaCard extends StatelessWidget {
-  const _AboutGeaCard({required this.onTap});
-
+  final double progress;
+  final String progressLabel;
+  final String subtitle;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return _Panel(
+    return _SoftCard(
       onTap: onTap,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 1),
-            child: Icon(LucideIcons.info, size: 18, color: AppColors.brand),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.accentSoft,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              LucideIcons.sun,
+              size: 22,
+              color: AppColors.amber,
+            ),
           ),
-          const Gap(10),
+          const Gap(14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tentang Skala Global Acne (GEA)',
-                  style: appFont(fontSize: 14, fontWeight: FontWeight.w700),
+                  'Pemeriksaan GEA',
+                  style: appFont(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
-                const Gap(5),
+                const Gap(2),
                 Text(
-                  'Skala evaluasi dermatologis objektif mulai dari grade 0 '
-                  '(bersih tanpa lesi), grade 2 (ringan / mild), hingga grade '
-                  '5 (sangat parah dengan lesi nodulokistik merata).',
+                  subtitle,
+                  style: appFont(fontSize: 12, color: AppColors.inkMuted),
+                ),
+              ],
+            ),
+          ),
+          const Gap(10),
+          SizedBox(
+            width: 72,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  progressLabel,
                   style: appFont(
-                    fontSize: 12.75,
-                    color: AppColors.inkMuted,
-                    height: 1.6,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.brand,
+                  ),
+                ),
+                const Gap(6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: progress <= 0 ? 0.04 : progress,
+                    minHeight: 6,
+                    backgroundColor: AppColors.muted,
+                    color: AppColors.brand,
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.tint,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color tint;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+      child: Column(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: tint,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 20, color: iconColor),
+          ),
+          const Gap(10),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: appFont(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.action,
+    required this.onAction,
+  });
+
+  final String title;
+  final String action;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: appFont(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        const Spacer(),
+        GestureDetector(
+          onTap: onAction,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                action,
+                style: appFont(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.brand,
+                ),
+              ),
+              const Gap(2),
+              const Icon(
+                LucideIcons.chevronRight,
+                size: 16,
+                color: AppColors.brand,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ForYouCard extends StatelessWidget {
+  const _ForYouCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftCard(
+      color: AppColors.brand,
+      padding: const EdgeInsets.all(18),
+      onTap: onTap,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        LucideIcons.clock,
+                        size: 12,
+                        color: AppColors.white,
+                      ),
+                      const Gap(5),
+                      Text(
+                        '3 menit',
+                        style: appFont(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Gap(14),
+                Text(
+                  'Cara scan wajah\nyang benar',
+                  style: appFont(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.white,
+                    height: 1.2,
+                  ),
+                ),
+                const Gap(16),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Baca sekarang',
+                        style: appFont(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.brand,
+                        ),
+                      ),
+                      const Gap(4),
+                      const Icon(
+                        LucideIcons.arrowRight,
+                        size: 14,
+                        color: AppColors.brand,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Gap(12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: SizedBox(
+              width: 96,
+              height: 110,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    'assets/images/acne_people.png',
+                    fit: BoxFit.cover,
+                    alignment: const Alignment(0, -0.2),
+                  ),
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: const BoxDecoration(
+                        color: AppColors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        LucideIcons.play,
+                        size: 16,
+                        color: AppColors.brand,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecommendedCard extends StatelessWidget {
+  const _RecommendedCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftCard(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.asset(
+              'assets/images/acne_people.png',
+              width: 64,
+              height: 64,
+              fit: BoxFit.cover,
+              alignment: const Alignment(0, -0.15),
+            ),
+          ),
+          const Gap(14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hasil GEA terakhir',
+                  style: appFont(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+                const Gap(4),
+                Text(
+                  'Skor 2 · Ringan',
+                  style: appFont(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.brand,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => showComingSoon(context),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: AppColors.brand,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                LucideIcons.plus,
+                size: 20,
+                color: AppColors.white,
+              ),
             ),
           ),
         ],
@@ -669,94 +626,365 @@ class _ProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final email = context.watch<AuthCubit>().state.user?.email ?? '-';
-    final name = _nameFromEmail(email == '-' ? null : email);
+    final name = _capitalize(_nameFromEmail(email == '-' ? null : email));
 
-    return ListView(
-      padding: _pagePadding(context),
-      children: [
-        const Text('Profil').x2Large.bold,
-        const Gap(20),
-        Row(
-          children: [
-            Avatar(
-              initials: _initials(name),
-              size: 56,
-              backgroundColor: AppColors.muted,
-            ),
-            const Gap(14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.muted,
+            AppColors.page,
+            Color(0xFFFFF8FA),
+          ],
+        ),
+      ),
+      child: ListView(
+        padding: _pagePadding(context),
+        children: [
+          Text(
+            'Profil',
+            style: appFont(fontSize: 28, fontWeight: FontWeight.w800),
+          ),
+          const Gap(20),
+          _ProfileSummaryCard(name: name, email: email),
+          const Gap(24),
+          Text(
+            'Akun',
+            style: appFont(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const Gap(10),
+          _ProfileMenuCard(
+            children: [
+              _ProfileMenuTile(
+                label: 'Kelola langganan',
+                onTap: () => showComingSoon(context),
+              ),
+              const _ProfileMenuDivider(),
+              _ProfileMenuTile(
+                label: 'Pulihkan pembelian',
+                onTap: () => showComingSoon(context),
+              ),
+            ],
+          ),
+          const Gap(22),
+          Text(
+            'Preferensi',
+            style: appFont(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const Gap(10),
+          _ProfileMenuCard(
+            children: [
+              _ProfileMenuTile(
+                icon: LucideIcons.settings,
+                label: 'Pengaturan aplikasi',
+                onTap: () => showComingSoon(context),
+              ),
+              const _ProfileMenuDivider(),
+              _ProfileMenuTile(
+                icon: LucideIcons.lock,
+                label: 'Privasi & keamanan',
+                onTap: () => showComingSoon(context),
+              ),
+              const _ProfileMenuDivider(),
+              _ProfileMenuTile(
+                icon: LucideIcons.bell,
+                label: 'Notifikasi',
+                onTap: () => showComingSoon(context),
+              ),
+              const _ProfileMenuDivider(),
+              _ProfileMenuTile(
+                icon: LucideIcons.globe,
+                label: 'Bahasa',
+                onTap: () => showComingSoon(context),
+              ),
+            ],
+          ),
+          const Gap(24),
+          GestureDetector(
+            onTap: () {
+              context.read<AuthCubit>().logout();
+              context.go('/splash');
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis)
-                      .base
-                      .semiBold,
-                  const Gap(2),
-                  Text(email, maxLines: 1, overflow: TextOverflow.ellipsis)
-                      .small
-                      .muted,
+                  const Icon(
+                    LucideIcons.logOut,
+                    size: 18,
+                    color: AppColors.brand,
+                  ),
+                  const Gap(8),
+                  Text(
+                    'Keluar',
+                    style: appFont(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.brand,
+                    ),
+                  ),
                 ],
               ),
             ),
-          ],
-        ),
-        const Gap(20),
-        Card(
-          theme: const CardTheme(padding: EdgeInsets.zero),
-          child: Column(
-            children: [
-              _InfoRow(label: 'Email', value: email),
-              const Divider(),
-              const _InfoRow(label: 'Tipe akun', value: 'Prototipe'),
-            ],
           ),
-        ),
-        const Gap(16),
-        const Alert(
-          leading: Icon(LucideIcons.info),
-          title: Text('Sesi tersimpan di memori'),
-          content: Text(
-            'Sesi login hanya tersimpan di memori aplikasi dan hilang saat aplikasi ditutup.',
+          const Gap(12),
+          Text(
+            'Sesi hanya tersimpan di memori aplikasi.',
+            textAlign: TextAlign.center,
+            style: appFont(fontSize: 11.5, color: AppColors.inkMuted),
           ),
-        ),
-        const Gap(20),
-        OutlineButton(
-          alignment: Alignment.center,
-          leading: const Icon(LucideIcons.logOut),
-          onPressed: () {
-            context.read<AuthCubit>().logout();
-            context.go('/welcome');
-          },
-          child: const Text('Keluar'),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+class _ProfileSummaryCard extends StatelessWidget {
+  const _ProfileSummaryCard({required this.name, required this.email});
 
-  final String label;
-  final String value;
+  final String name;
+  final String email;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Text(label).small.muted,
-          const Gap(16),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ).small.medium,
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.ink.withValues(alpha: 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
           ),
         ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: AppColors.brandSoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      _initials(name),
+                      style: appFont(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.brand,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: GestureDetector(
+                      onTap: () => showComingSoon(context),
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: AppColors.brand,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.white, width: 2),
+                        ),
+                        child: const Icon(
+                          LucideIcons.camera,
+                          size: 12,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const Gap(14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: appFont(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const Gap(3),
+                    Text(
+                      email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: appFont(
+                        fontSize: 12.5,
+                        color: AppColors.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.brandBright, AppColors.brand],
+                  ),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'PRO',
+                  style: appFont(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.white,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Gap(18),
+          GestureDetector(
+            onTap: () => showComingSoon(context),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              decoration: BoxDecoration(
+                color: AppColors.brand,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    LucideIcons.pencil,
+                    size: 16,
+                    color: AppColors.white,
+                  ),
+                  const Gap(8),
+                  Text(
+                    'Edit profil',
+                    style: appFont(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileMenuCard extends StatelessWidget {
+  const _ProfileMenuCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.ink.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(children: children),
+    );
+  }
+}
+
+class _ProfileMenuDivider extends StatelessWidget {
+  const _ProfileMenuDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: Divider(height: 1, color: AppColors.border),
+    );
+  }
+}
+
+class _ProfileMenuTile extends StatelessWidget {
+  const _ProfileMenuTile({
+    required this.label,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Row(
+          children: [
+            if (icon != null) ...[
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(
+                  color: AppColors.muted,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 16, color: AppColors.ink),
+              ),
+              const Gap(12),
+            ],
+            Expanded(
+              child: Text(
+                label,
+                style: appFont(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
+            ),
+            const Icon(
+              LucideIcons.chevronRight,
+              size: 18,
+              color: AppColors.inkMuted,
+            ),
+          ],
+        ),
       ),
     );
   }

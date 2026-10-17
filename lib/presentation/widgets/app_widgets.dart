@@ -111,12 +111,10 @@ class SectionHeader extends StatelessWidget {
 
 /// Toast untuk fitur yang belum tersedia di versi prototipe.
 void showComingSoon(BuildContext context) {
-  showToast(
-    context: context,
-    location: ToastLocation.bottomCenter,
-    builder: (context, overlay) => const SurfaceCard(
-      child: Text('Belum tersedia di versi prototipe.'),
-    ),
+  showAppAlert(
+    context,
+    'Belum tersedia di versi prototipe.',
+    icon: LucideIcons.info,
   );
 }
 
@@ -192,23 +190,9 @@ class AppButton extends StatelessWidget {
           height: height,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: tonal ? AppColors.muted : null,
-            gradient: tonal
-                ? null
-                : const LinearGradient(
-                    colors: [AppColors.brandBright, AppColors.brandDeep],
-                  ),
+            color: tonal ? AppColors.muted : AppColors.brand,
             borderRadius: BorderRadius.circular(12),
             border: tonal ? Border.all(color: AppColors.border) : null,
-            boxShadow: tonal
-                ? null
-                : const [
-                    BoxShadow(
-                      color: Color(0x4DBE185D),
-                      blurRadius: 16,
-                      offset: Offset(0, 6),
-                    ),
-                  ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -217,10 +201,7 @@ class AppButton extends StatelessWidget {
                 SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(
-                    size: 18,
-                    onSurface: !tonal,
-                  ),
+                  child: CircularProgressIndicator(size: 18, onSurface: !tonal),
                 ),
                 const Gap(12),
               ] else if (leading != null) ...[
@@ -249,94 +230,212 @@ class AppButton extends StatelessWidget {
 
 /// Toast singkat berisi petunjuk untuk pengguna.
 void showHint(BuildContext context, String message) {
+  showAppAlert(context, message);
+}
+
+/// Alert toast polished: ikon warning + gradient pink, ukuran responsif.
+void showAppAlert(
+  BuildContext context,
+  String message, {
+  IconData icon = LucideIcons.triangleAlert,
+}) {
   showToast(
     context: context,
-    location: ToastLocation.bottomCenter,
-    builder: (context, overlay) => SurfaceCard(child: Text(message)),
+    location: ToastLocation.topRight,
+    builder: (context, overlay) => AppAlertToast(
+      message: message,
+      icon: icon,
+      onClose: overlay.close,
+    ),
   );
+}
+
+/// Kartu alert toast — proporsional di layar sempit & lebar.
+class AppAlertToast extends StatelessWidget {
+  const AppAlertToast({
+    super.key,
+    required this.message,
+    this.icon = LucideIcons.triangleAlert,
+    this.onClose,
+  });
+
+  final String message;
+  final IconData icon;
+  final VoidCallback? onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final padding = MediaQuery.paddingOf(context);
+    // Sisakan margin aman di kanan supaya tidak kepotong oleh edge / safe area.
+    final maxWidth = (size.width - padding.right - 28).clamp(220.0, 300.0);
+    final padH = size.width < 360 ? 12.0 : 14.0;
+    final padV = size.width < 360 ? 11.0 : 13.0;
+    final iconBox = size.width < 360 ? 32.0 : 36.0;
+    final iconSize = size.width < 360 ? 15.0 : 17.0;
+    final fontSize = size.width < 360 ? 12.5 : 13.5;
+
+    return Padding(
+      padding: EdgeInsets.only(top: padding.top > 0 ? 4 : 12, right: 12),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(padH, padV, padH, padV),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.brandBright,
+                AppColors.brand,
+                AppColors.brandDeep,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.brand.withValues(alpha: 0.35),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: iconBox,
+                height: iconBox,
+                decoration: BoxDecoration(
+                  color: AppColors.white.withValues(alpha: 0.22),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: iconSize, color: AppColors.white),
+              ),
+              SizedBox(width: padH),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 6, right: 6),
+                  child: Text(
+                    message,
+                    style: appFont(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.white,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ),
+              const Gap(4),
+              GestureDetector(
+                onTap: onClose,
+                behavior: HitTestBehavior.opaque,
+                child: ClipOval(
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withValues(alpha: 0.28),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.white.withValues(alpha: 0.55),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Icon(
+                      LucideIcons.x,
+                      size: 12,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Header aplikasi: logo + nama + status AI, avatar di kanan.
 class AppHeader extends StatelessWidget {
-  const AppHeader({super.key, this.onProfile});
+  const AppHeader({super.key, this.onProfile, this.onNotify});
 
   /// Dipanggil saat avatar ditekan; `null` membuatnya non-interaktif.
   final VoidCallback? onProfile;
+  final VoidCallback? onNotify;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Padding(
       padding: EdgeInsets.fromLTRB(
-        16,
-        MediaQuery.paddingOf(context).top + 10,
-        16,
-        10,
-      ),
-      decoration: const BoxDecoration(
-        color: AppColors.page,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+        20,
+        MediaQuery.paddingOf(context).top + 12,
+        20,
+        8,
       ),
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
               color: AppColors.brand,
-              borderRadius: BorderRadius.circular(10),
+              shape: BoxShape.circle,
             ),
             child: const Icon(
-              LucideIcons.scanFace,
+              LucideIcons.sparkles,
               size: 18,
               color: AppColors.white,
             ),
           ),
           const Gap(10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SkinScan ID',
-                  style: appFont(fontSize: 15.5, fontWeight: FontWeight.w700),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      width: 5,
-                      height: 5,
-                      decoration: const BoxDecoration(
-                        color: AppColors.brand,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const Gap(5),
-                    Text(
-                      'AI Diagnostik Aktif',
-                      style: appFont(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.brand,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          Text(
+            'Derma Scan',
+            style: appFont(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: onNotify ?? () => showComingSoon(context),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.ink.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                LucideIcons.bell,
+                size: 18,
+                color: AppColors.ink,
+              ),
             ),
           ),
+          const Gap(10),
           GestureDetector(
             onTap: onProfile,
             behavior: HitTestBehavior.opaque,
             child: Container(
-              width: 34,
-              height: 34,
+              width: 40,
+              height: 40,
               decoration: const BoxDecoration(
                 color: AppColors.brand,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 LucideIcons.user,
-                size: 17,
+                size: 18,
                 color: AppColors.white,
               ),
             ),

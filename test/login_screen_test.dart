@@ -18,10 +18,15 @@ double _contrastRatio(Color a, Color b) {
 /// dan router ikut teruji seperti di produksi.
 Future<void> _openLogin(WidgetTester tester) async {
   await tester.pumpWidget(const SkinProblemDetectorApp());
-  await tester.pump(const Duration(milliseconds: 1900));
+  await tester.pump();
+
+  await tester.tap(find.text('Mulai'));
+  await tester.pump();
+  // Welcome: reveal 3 fitur × 1s + CTA.
+  await tester.pump(const Duration(seconds: 4));
   await tester.pumpAndSettle();
 
-  await tester.tap(find.text('Mulai Sekarang'));
+  await tester.tap(find.text('Coba Scan Wajah'));
   await tester.pumpAndSettle();
 
   expect(find.text('Masuk ke Akun Anda'), findsOneWidget);

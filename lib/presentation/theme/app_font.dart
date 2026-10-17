@@ -12,6 +12,7 @@ TextStyle appFont({
   Color? color,
   double? height,
   double? letterSpacing,
+  FontStyle? fontStyle,
 }) {
   return GoogleFonts.plusJakartaSans(
     fontSize: fontSize,
@@ -19,5 +20,6 @@ TextStyle appFont({
     color: color,
     height: height,
     letterSpacing: letterSpacing,
+    fontStyle: fontStyle,
   );
 }
