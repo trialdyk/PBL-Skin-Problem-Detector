@@ -103,15 +103,15 @@ class _HomeTab extends StatelessWidget {
           ],
         ),
       ),
-      child: Column(
+      child: Stack(
         children: [
-          AppHeader(
-            onProfile: () => context.read<HomeCubit>().setTab(_tabProfile),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-              children: [
+          Column(
+            children: [
+              SizedBox(height: AppHeader.barHeight(context) + 6),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+                  children: [
                 Text.rich(
                   TextSpan(
                     style: appFont(
@@ -207,6 +207,17 @@ class _HomeTab extends StatelessWidget {
                 const Gap(12),
                 const _RecommendedCard(),
               ],
+                ),
+              ),
+            ],
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: AppHeader(
+              backgroundColor: AppColors.muted,
+              onProfile: () => context.read<HomeCubit>().setTab(_tabProfile),
             ),
           ),
         ],

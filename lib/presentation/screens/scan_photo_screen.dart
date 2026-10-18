@@ -82,13 +82,15 @@ class ScanPhotoScreen extends StatelessWidget {
                   handleBottomNavTap(context, index, current: NavIndex.photo),
             ),
           ],
-          child: Column(
+          child: Stack(
             children: [
-              const AppHeader(),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
-                  children: [
+              Column(
+                children: [
+                  SizedBox(height: AppHeader.barHeight(context) + 6),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                      children: [
                     _StepProgress(done: done),
                     const Gap(18),
                     Text(
@@ -144,8 +146,16 @@ class ScanPhotoScreen extends StatelessWidget {
                       fontSize: 13,
                       onTap: () => _showGuide(context),
                     ),
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: AppHeader(),
               ),
             ],
           ),

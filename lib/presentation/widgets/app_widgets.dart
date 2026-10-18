@@ -243,11 +243,8 @@ void showAppAlert(
   showToast(
     context: context,
     location: ToastLocation.topRight,
-    builder: (context, overlay) => AppAlertToast(
-      message: message,
-      icon: icon,
-      onClose: overlay.close,
-    ),
+    builder: (context, overlay) =>
+        AppAlertToast(message: message, icon: icon, onClose: overlay.close),
   );
 }
 
@@ -362,108 +359,154 @@ class AppAlertToast extends StatelessWidget {
 }
 
 /// Header aplikasi: logo + nama + notifikasi/avatar di kanan.
+///
+/// Pakai di dalam [Stack] (di atas konten). Satu gradient continuous
+/// (solid → transparan) di bawah logo — tanpa tepi kotak keras.
 class AppHeader extends StatelessWidget {
-  const AppHeader({super.key, this.onProfile, this.onNotify});
+  const AppHeader({
+    super.key,
+    this.onProfile,
+    this.onNotify,
+    this.backgroundColor = AppColors.page,
+    this.fadeHeight = defaultFadeHeight,
+  });
 
   /// Dipanggil saat avatar ditekan; `null` membuatnya non-interaktif.
   final VoidCallback? onProfile;
   final VoidCallback? onNotify;
 
+  /// Warna solid bar navbar (samakan dengan top background halaman).
+  final Color backgroundColor;
+
+  /// Tinggi zona fade di bawah bar (overlay ke konten).
+  final double fadeHeight;
+
+  /// Cuma tepi bawah navbar — soft tapi tidak merambah jauh ke konten.
+  static const defaultFadeHeight = 28.0;
   static const _markAsset = 'assets/images/dermascan-mark-color.svg';
+  static const _rowHeight = 40.0;
+  static const _padTop = 12.0;
+  static const _padBottom = 8.0;
+  static const _fadeSamples = 24;
+
+  /// Tinggi area solid (logo row).
+  static double barHeight(BuildContext context) =>
+      MediaQuery.paddingOf(context).top + _padTop + _rowHeight + _padBottom;
+
+  /// Gradient soft (ease-in) tapi zona pendek — hanya di bawah navbar.
+  static (List<Color>, List<double>) _softVeilGradient({
+    required Color color,
+    required double fadeStart,
+  }) {
+    final fadeSpan = 1.0 - fadeStart;
+    final colors = <Color>[color, color];
+    final stops = <double>[0.0, fadeStart];
+
+    for (var i = 1; i <= _fadeSamples; i++) {
+      final t = i / _fadeSamples;
+      final eased = Curves.easeIn.transform(t);
+      colors.add(color.withValues(alpha: (1.0 - eased).clamp(0.0, 1.0)));
+      stops.add(fadeStart + fadeSpan * t);
+    }
+    return (colors, stops);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            MediaQuery.paddingOf(context).top + 12,
-            20,
-            10,
-          ),
-          child: Row(
-            children: [
-              SvgPicture.asset(
-                _markAsset,
-                width: 36,
-                height: 36,
-                fit: BoxFit.contain,
-              ),
-              const Gap(10),
-              Text(
-                'Derma Scan',
-                style: appFont(fontSize: 18, fontWeight: FontWeight.w800),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: onNotify ?? () => showComingSoon(context),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.ink.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+    final top = MediaQuery.paddingOf(context).top;
+    final solidH = top + _padTop + _rowHeight + _padBottom;
+    final totalH = solidH + fadeHeight;
+    final fadeStart = solidH / totalH;
+    final (veilColors, veilStops) = _softVeilGradient(
+      color: backgroundColor,
+      fadeStart: fadeStart,
+    );
+
+    return SizedBox(
+      height: totalH,
+      width: double.infinity,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: veilColors,
+                    stops: veilStops,
                   ),
-                  child: const Icon(
-                    LucideIcons.bell,
-                    size: 18,
-                    color: AppColors.ink,
-                  ),
-                ),
-              ),
-              const Gap(10),
-              GestureDetector(
-                onTap: onProfile,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: AppColors.brand,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    LucideIcons.user,
-                    size: 18,
-                    color: AppColors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Fade soft di bawah navbar biar tidak kaku.
-        IgnorePointer(
-          child: SizedBox(
-            height: 28,
-            width: double.infinity,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.muted,
-                    AppColors.muted.withValues(alpha: 0.55),
-                    AppColors.muted.withValues(alpha: 0),
-                  ],
-                  stops: const [0.0, 0.45, 1.0],
                 ),
               ),
             ),
           ),
-        ),
-      ],
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, top + _padTop, 20, _padBottom),
+            child: SizedBox(
+              height: _rowHeight,
+              child: Row(
+                children: [
+                  SvgPicture.asset(
+                    _markAsset,
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.contain,
+                  ),
+                  const Gap(10),
+                  Text(
+                    'DermaScan',
+                    style: appFont(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: onNotify ?? () => showComingSoon(context),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.border),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.ink.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        LucideIcons.bell,
+                        size: 18,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
+                  const Gap(10),
+                  GestureDetector(
+                    onTap: onProfile,
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: AppColors.brand,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        LucideIcons.user,
+                        size: 18,
+                        color: AppColors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
