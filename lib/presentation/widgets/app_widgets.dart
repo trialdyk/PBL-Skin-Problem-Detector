@@ -149,6 +149,74 @@ class AppTextLink extends StatelessWidget {
   }
 }
 
+/// Kartu putih soft — sama bahasa visual home (radius besar + shadow tipis).
+class SoftSurface extends StatelessWidget {
+  const SoftSurface({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.color = AppColors.white,
+    this.radius = 22,
+    this.border,
+    this.onTap,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final Color color;
+  final double radius;
+  final BoxBorder? border;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(radius),
+        border: border,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.ink.withValues(alpha: 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: child,
+    );
+    if (onTap == null) return card;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: card,
+    );
+  }
+}
+
+/// Latar halaman blush lembut (home / scan / interview / hasil).
+class SoftPageBackground extends StatelessWidget {
+  const SoftPageBackground({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.muted, AppColors.page, Color(0xFFFFF8FA)],
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
 /// Tombol penuh-lebar: gradien crimson (utama) atau blush ber-border (tonal).
 class AppButton extends StatelessWidget {
   const AppButton({
@@ -192,7 +260,7 @@ class AppButton extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: tonal ? AppColors.muted : AppColors.brand,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             border: tonal ? Border.all(color: AppColors.border) : null,
           ),
           child: Row(

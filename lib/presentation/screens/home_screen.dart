@@ -66,12 +66,8 @@ String _capitalize(String value) {
   return value[0].toUpperCase() + value.substring(1);
 }
 
-EdgeInsets _pagePadding(BuildContext context) => EdgeInsets.fromLTRB(
-  20,
-  MediaQuery.paddingOf(context).top + 16,
-  20,
-  24,
-);
+EdgeInsets _pagePadding(BuildContext context) =>
+    EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 16, 20, 24);
 
 // ───────────────────────────── Tab Beranda ─────────────────────────────
 
@@ -96,11 +92,7 @@ class _HomeTab extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            AppColors.muted,
-            AppColors.page,
-            Color(0xFFFFF8FA),
-          ],
+          colors: [AppColors.muted, AppColors.page, Color(0xFFFFF8FA)],
         ),
       ),
       child: Stack(
@@ -112,101 +104,102 @@ class _HomeTab extends StatelessWidget {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
                   children: [
-                Text.rich(
-                  TextSpan(
-                    style: appFont(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                      height: 1.2,
-                    ),
-                    children: [
-                      const TextSpan(text: 'Halo, '),
+                    Text.rich(
                       TextSpan(
-                        text: name,
                         style: appFont(
                           fontSize: 28,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.brand,
+                          color: AppColors.ink,
+                          height: 1.2,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Gap(6),
-                Text(
-                  'Mari rawat kulitmu hari ini',
-                  style: appFont(
-                    fontSize: 14,
-                    color: AppColors.inkMuted,
-                    height: 1.4,
-                  ),
-                ),
-                const Gap(20),
-                _RoutineCard(
-                  progress: progress,
-                  progressLabel: '$progressPct%',
-                  subtitle: photosDone == 0
-                      ? '3 langkah · Siap mulai'
-                      : '$photosDone/3 foto · Lanjutkan',
-                  onTap: () => context.push('/scan'),
-                ),
-                const Gap(16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _QuickAction(
-                        icon: LucideIcons.scanFace,
-                        label: 'AI scan',
-                        tint: AppColors.brandSoft,
-                        iconColor: AppColors.brand,
-                        onTap: () => context.push('/scan'),
+                        children: [
+                          const TextSpan(text: 'Halo, '),
+                          TextSpan(
+                            text: name,
+                            style: appFont(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.brand,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const Gap(10),
-                    Expanded(
-                      child: _QuickAction(
-                        icon: LucideIcons.bookOpen,
-                        label: 'Artikel',
-                        tint: const Color(0xFFE8F5E9),
-                        iconColor: const Color(0xFF2E7D32),
-                        onTap: () =>
-                            context.read<HomeCubit>().setTab(_tabArticles),
+                    const Gap(6),
+                    Text(
+                      'Mari rawat kulitmu hari ini',
+                      style: appFont(
+                        fontSize: 14,
+                        color: AppColors.inkMuted,
+                        height: 1.4,
                       ),
                     ),
-                    const Gap(10),
-                    Expanded(
-                      child: _QuickAction(
-                        icon: LucideIcons.user,
-                        label: 'Profil',
-                        tint: AppColors.accentSoft,
-                        iconColor: AppColors.accent,
-                        onTap: () =>
-                            context.read<HomeCubit>().setTab(_tabProfile),
-                      ),
+                    const Gap(20),
+                    _RoutineCard(
+                      progress: progress,
+                      progressLabel: '$progressPct%',
+                      subtitle: photosDone == 0
+                          ? '3 langkah · Siap mulai'
+                          : '$photosDone/3 foto · Lanjutkan',
+                      onTap: () => context.push('/scan'),
                     ),
+                    const Gap(16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _QuickAction(
+                            icon: LucideIcons.scanFace,
+                            label: 'AI scan',
+                            tint: AppColors.brandSoft,
+                            iconColor: AppColors.brand,
+                            onTap: () => context.push('/scan'),
+                          ),
+                        ),
+                        const Gap(10),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: LucideIcons.bookOpen,
+                            label: 'Artikel',
+                            tint: const Color(0xFFE8F5E9),
+                            iconColor: const Color(0xFF2E7D32),
+                            onTap: () =>
+                                context.read<HomeCubit>().setTab(_tabArticles),
+                          ),
+                        ),
+                        const Gap(10),
+                        Expanded(
+                          child: _QuickAction(
+                            icon: LucideIcons.user,
+                            label: 'Profil',
+                            tint: AppColors.accentSoft,
+                            iconColor: AppColors.accent,
+                            onTap: () =>
+                                context.read<HomeCubit>().setTab(_tabProfile),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Gap(24),
+                    _SectionHeader(
+                      title: 'Yang bisa anda baca',
+                      action: 'Lihat semua',
+                      onAction: () =>
+                          context.read<HomeCubit>().setTab(_tabArticles),
+                    ),
+                    const Gap(12),
+                    _ForYouCard(
+                      onTap: () =>
+                          context.read<HomeCubit>().setTab(_tabArticles),
+                    ),
+                    const Gap(24),
+                    _SectionHeader(
+                      title: 'Direkomendasikan',
+                      action: 'Lihat semua',
+                      onAction: () => showComingSoon(context),
+                    ),
+                    const Gap(12),
+                    const _RecommendedCard(),
                   ],
-                ),
-                const Gap(24),
-                _SectionHeader(
-                  title: 'Untukmu',
-                  action: 'Lihat semua',
-                  onAction: () =>
-                      context.read<HomeCubit>().setTab(_tabArticles),
-                ),
-                const Gap(12),
-                _ForYouCard(
-                  onTap: () => context.read<HomeCubit>().setTab(_tabArticles),
-                ),
-                const Gap(24),
-                _SectionHeader(
-                  title: 'Direkomendasikan',
-                  action: 'Lihat semua',
-                  onAction: () => showComingSoon(context),
-                ),
-                const Gap(12),
-                const _RecommendedCard(),
-              ],
                 ),
               ),
             ],
@@ -407,10 +400,7 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(
-          title,
-          style: appFont(fontSize: 17, fontWeight: FontWeight.w700),
-        ),
+        Text(title, style: appFont(fontSize: 17, fontWeight: FontWeight.w700)),
         const Spacer(),
         GestureDetector(
           onTap: onAction,
@@ -644,11 +634,7 @@ class _ProfileTab extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.muted,
-            AppColors.page,
-            Color(0xFFFFF8FA),
-          ],
+          colors: [AppColors.muted, AppColors.page, Color(0xFFFFF8FA)],
         ),
       ),
       child: ListView(
@@ -837,20 +823,14 @@ class _ProfileSummaryCard extends StatelessWidget {
                       name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: appFont(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: appFont(fontSize: 17, fontWeight: FontWeight.w800),
                     ),
                     const Gap(3),
                     Text(
                       email,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: appFont(
-                        fontSize: 12.5,
-                        color: AppColors.inkMuted,
-                      ),
+                      style: appFont(fontSize: 12.5, color: AppColors.inkMuted),
                     ),
                   ],
                 ),
@@ -952,11 +932,7 @@ class _ProfileMenuDivider extends StatelessWidget {
 }
 
 class _ProfileMenuTile extends StatelessWidget {
-  const _ProfileMenuTile({
-    required this.label,
-    required this.onTap,
-    this.icon,
-  });
+  const _ProfileMenuTile({required this.label, required this.onTap, this.icon});
 
   final String label;
   final VoidCallback onTap;
