@@ -1,9 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
-import 'package:pbl_skin_problem_detector/presentation/widgets/dermascan_brand_logo.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -22,7 +22,6 @@ class _SplashScreenState extends State<SplashScreen>
 
   late final Animation<double> _decorEnter;
   late final Animation<double> _heroEnter;
-  late final Animation<double> _logoReveal;
   late final Animation<double> _featureEnter;
   late final Animation<double> _ctaEnter;
 
@@ -48,7 +47,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     _decorEnter = staggered(0.00, 0.35);
     _heroEnter = staggered(0.12, 0.50);
-    _logoReveal = staggered(0.28, 0.72);
     _featureEnter = staggered(0.32, 0.70);
     _ctaEnter = staggered(0.48, 0.92);
 
@@ -85,7 +83,6 @@ class _SplashScreenState extends State<SplashScreen>
               final w = constraints.maxWidth;
               final h = constraints.maxHeight;
               final circleSize = (w * 0.58).clamp(180.0, 260.0);
-              final logoW = (w * 0.72).clamp(220.0, 320.0);
               final featureW = (w * 0.42).clamp(140.0, 190.0);
               final featureH = featureW * 0.72;
               // Sejajarkan kartu dengan gelombang baris ke-4 (y ≈ 0.54h).
@@ -143,23 +140,13 @@ class _SplashScreenState extends State<SplashScreen>
                     left: 16,
                     right: 16,
                     bottom: 20,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        DermaScanBrandLogo(
-                          width: logoW,
-                          reveal: _logoReveal,
-                        ),
-                        const Gap(16),
-                        _AppearOverlay(
-                          animation: _ctaEnter,
-                          beginOffset: const Offset(0, 0.18),
-                          beginScale: 0.96,
-                          child: _BottomCtaCard(
-                            onStart: () => context.go('/welcome'),
-                          ),
-                        ),
-                      ],
+                    child: _AppearOverlay(
+                      animation: _ctaEnter,
+                      beginOffset: const Offset(0, 0.18),
+                      beginScale: 0.96,
+                      child: _BottomCtaCard(
+                        onStart: () => context.go('/login'),
+                      ),
                     ),
                   ),
                 ],
@@ -330,17 +317,74 @@ class _FeatureImageCard extends StatelessWidget {
   }
 }
 
-class _BottomCtaCard extends StatelessWidget {
+class _BottomCtaCard extends StatefulWidget {
   const _BottomCtaCard({required this.onStart});
 
   final VoidCallback onStart;
 
   @override
+  State<_BottomCtaCard> createState() => _BottomCtaCardState();
+}
+
+class _BottomCtaCardState extends State<_BottomCtaCard> {
+  static const _features = <({IconData icon, String title, String body})>[
+    (
+      icon: LucideIcons.camera,
+      title: 'Scan 3 sudut',
+      body: 'Selfie depan, kiri, dan kanan dengan panduan posisi langsung.',
+    ),
+    (
+      icon: LucideIcons.messagesSquare,
+      title: 'Interview singkat',
+      body: 'Lima pertanyaan tentang jenis kulit dan kebiasaanmu.',
+    ),
+    (
+      icon: LucideIcons.activity,
+      title: 'Hasil skala GEA',
+      body: 'Tingkat keparahan jerawat 0–5 beserta penjelasannya.',
+    ),
+  ];
+
+  static const _autoScrollDelay = Duration(milliseconds: 2000);
+
+  late final PageController _pageController;
+  Timer? _autoScroll;
+  int _page = 0;
+  bool _userDragging = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.88);
+    _startAutoScroll();
+  }
+
+  void _startAutoScroll() {
+    _autoScroll?.cancel();
+    _autoScroll = Timer.periodic(_autoScrollDelay, (_) {
+      if (!mounted || _userDragging || !_pageController.hasClients) return;
+      final next = (_page + 1) % _features.length;
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 720),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoScroll?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(22, 22, 18, 18),
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
       decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.94),
+        color: AppColors.white.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: AppColors.border),
         boxShadow: [
@@ -355,35 +399,23 @@ class _BottomCtaCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'The Perfect',
-            style: appFont(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-              height: 1.15,
-            ),
-          ),
-          const Gap(4),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Text(
-                  'Skin',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  'The Perfect Skin Care Regimen',
                   style: appFont(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.ink,
-                    height: 1.15,
+                    height: 1.12,
                   ),
                 ),
               ),
               const Gap(10),
               GestureDetector(
-                onTap: onStart,
+                onTap: widget.onStart,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -416,25 +448,172 @@ class _BottomCtaCard extends StatelessWidget {
               ),
             ],
           ),
-          const Gap(4),
-          Text(
-            'Care Regimen',
-            style: appFont(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-              height: 1.15,
+          const Gap(14),
+          SizedBox(
+            height: 96,
+            child: Stack(
+              children: [
+                NotificationListener<ScrollNotification>(
+                  onNotification: (n) {
+                    if (n is ScrollStartNotification && n.dragDetails != null) {
+                      _userDragging = true;
+                    } else if (n is ScrollEndNotification) {
+                      _userDragging = false;
+                      _startAutoScroll();
+                    }
+                    return false;
+                  },
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: _features.length,
+                    onPageChanged: (i) => setState(() => _page = i),
+                    itemBuilder: (context, index) {
+                      final feature = _features[index];
+                      final active = index == _page;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: AnimatedScale(
+                          scale: active ? 1 : 0.96,
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          child: _SplashFeatureSlide(
+                            icon: feature.icon,
+                            title: feature.title,
+                            body: feature.body,
+                            active: active,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                // Fade pojok kanan biar peek card berikutnya soft.
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: 36,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            AppColors.white.withValues(alpha: 0),
+                            AppColors.white.withValues(alpha: 0.92),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const Gap(8),
-          Text(
-            'Skin Problem Detector · analisis berbasis skala GEA',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: appFont(
-              fontSize: 12,
-              color: AppColors.inkMuted,
-              height: 1.35,
+          const Gap(12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_features.length, (i) {
+              final active = i == _page;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: active ? 18 : 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  color: active
+                      ? AppColors.brand
+                      : AppColors.brand.withValues(alpha: 0.22),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SplashFeatureSlide extends StatelessWidget {
+  const _SplashFeatureSlide({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.active,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.page,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: active ? AppColors.brandLight : AppColors.border,
+          width: active ? 1.4 : 1,
+        ),
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: AppColors.brand.withValues(alpha: 0.10),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.brandSoft,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, size: 20, color: AppColors.brand),
+          ),
+          const Gap(12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: appFont(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                    height: 1.2,
+                  ),
+                ),
+                const Gap(4),
+                Text(
+                  body,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: appFont(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.inkMuted,
+                    height: 1.35,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -475,42 +654,37 @@ class _SplashDecorPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     // speed harus bilangan bulat agar posisi bintang seamless saat loop.
-    final waves = <({
-      double y,
-      double amp,
-      double phase,
-      int starCount,
-      int speed,
-    })>[
-      (
-        y: size.height * 0.18,
-        amp: 11,
-        phase: 0.25 + phaseShift,
-        starCount: 3,
-        speed: 1,
-      ),
-      (
-        y: size.height * 0.30,
-        amp: 13,
-        phase: 1.05 + phaseShift * 2,
-        starCount: 3,
-        speed: -1,
-      ),
-      (
-        y: size.height * 0.42,
-        amp: 10,
-        phase: 0.55 + phaseShift,
-        starCount: 2,
-        speed: 1,
-      ),
-      (
-        y: size.height * 0.54,
-        amp: 12,
-        phase: 1.4 + phaseShift * 2,
-        starCount: 3,
-        speed: -1,
-      ),
-    ];
+    final waves =
+        <({double y, double amp, double phase, int starCount, int speed})>[
+          (
+            y: size.height * 0.18,
+            amp: 11,
+            phase: 0.25 + phaseShift,
+            starCount: 3,
+            speed: 1,
+          ),
+          (
+            y: size.height * 0.30,
+            amp: 13,
+            phase: 1.05 + phaseShift * 2,
+            starCount: 3,
+            speed: -1,
+          ),
+          (
+            y: size.height * 0.42,
+            amp: 10,
+            phase: 0.55 + phaseShift,
+            starCount: 2,
+            speed: 1,
+          ),
+          (
+            y: size.height * 0.54,
+            amp: 12,
+            phase: 1.4 + phaseShift * 2,
+            starCount: 3,
+            speed: -1,
+          ),
+        ];
 
     for (final wave in waves) {
       final path = Path();

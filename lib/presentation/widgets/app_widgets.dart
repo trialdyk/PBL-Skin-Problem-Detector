@@ -1,3 +1,4 @@
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -360,7 +361,7 @@ class AppAlertToast extends StatelessWidget {
   }
 }
 
-/// Header aplikasi: logo + nama + status AI, avatar di kanan.
+/// Header aplikasi: logo + nama + notifikasi/avatar di kanan.
 class AppHeader extends StatelessWidget {
   const AppHeader({super.key, this.onProfile, this.onNotify});
 
@@ -368,80 +369,101 @@ class AppHeader extends StatelessWidget {
   final VoidCallback? onProfile;
   final VoidCallback? onNotify;
 
+  static const _markAsset = 'assets/images/dermascan-mark-color.svg';
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        MediaQuery.paddingOf(context).top + 12,
-        20,
-        8,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: AppColors.brand,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              LucideIcons.sparkles,
-              size: 18,
-              color: AppColors.white,
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            MediaQuery.paddingOf(context).top + 12,
+            20,
+            10,
           ),
-          const Gap(10),
-          Text(
-            'Derma Scan',
-            style: appFont(fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: onNotify ?? () => showComingSoon(context),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.ink.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
+          child: Row(
+            children: [
+              SvgPicture.asset(
+                _markAsset,
+                width: 36,
+                height: 36,
+                fit: BoxFit.contain,
+              ),
+              const Gap(10),
+              Text(
+                'Derma Scan',
+                style: appFont(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: onNotify ?? () => showComingSoon(context),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.ink.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                ],
+                  child: const Icon(
+                    LucideIcons.bell,
+                    size: 18,
+                    color: AppColors.ink,
+                  ),
+                ),
               ),
-              child: const Icon(
-                LucideIcons.bell,
-                size: 18,
-                color: AppColors.ink,
+              const Gap(10),
+              GestureDetector(
+                onTap: onProfile,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: AppColors.brand,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.user,
+                    size: 18,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Fade soft di bawah navbar biar tidak kaku.
+        IgnorePointer(
+          child: SizedBox(
+            height: 28,
+            width: double.infinity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.muted,
+                    AppColors.muted.withValues(alpha: 0.55),
+                    AppColors.muted.withValues(alpha: 0),
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                ),
               ),
             ),
           ),
-          const Gap(10),
-          GestureDetector(
-            onTap: onProfile,
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                color: AppColors.brand,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                LucideIcons.user,
-                size: 18,
-                color: AppColors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -194,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: _BackCircleButton(
                       onPressed: loading
                           ? null
-                          : () => context.go('/welcome'),
+                          : () => context.go('/splash'),
                     ),
                   ),
                 ),
