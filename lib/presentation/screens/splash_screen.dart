@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
+import 'package:pbl_skin_problem_detector/presentation/widgets/dermascan_brand_logo.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   late final Animation<double> _decorEnter;
   late final Animation<double> _heroEnter;
+  late final Animation<double> _logoReveal;
   late final Animation<double> _featureEnter;
   late final Animation<double> _ctaEnter;
 
@@ -46,6 +48,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _decorEnter = staggered(0.00, 0.35);
     _heroEnter = staggered(0.12, 0.50);
+    _logoReveal = staggered(0.28, 0.72);
     _featureEnter = staggered(0.32, 0.70);
     _ctaEnter = staggered(0.48, 0.92);
 
@@ -82,6 +85,7 @@ class _SplashScreenState extends State<SplashScreen>
               final w = constraints.maxWidth;
               final h = constraints.maxHeight;
               final circleSize = (w * 0.58).clamp(180.0, 260.0);
+              final logoW = (w * 0.72).clamp(220.0, 320.0);
               final featureW = (w * 0.42).clamp(140.0, 190.0);
               final featureH = featureW * 0.72;
               // Sejajarkan kartu dengan gelombang baris ke-4 (y ≈ 0.54h).
@@ -139,13 +143,23 @@ class _SplashScreenState extends State<SplashScreen>
                     left: 16,
                     right: 16,
                     bottom: 20,
-                    child: _AppearOverlay(
-                      animation: _ctaEnter,
-                      beginOffset: const Offset(0, 0.18),
-                      beginScale: 0.96,
-                      child: _BottomCtaCard(
-                        onStart: () => context.go('/welcome'),
-                      ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DermaScanBrandLogo(
+                          width: logoW,
+                          reveal: _logoReveal,
+                        ),
+                        const Gap(16),
+                        _AppearOverlay(
+                          animation: _ctaEnter,
+                          beginOffset: const Offset(0, 0.18),
+                          beginScale: 0.96,
+                          child: _BottomCtaCard(
+                            onStart: () => context.go('/welcome'),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
