@@ -10,6 +10,9 @@ bukan untuk klasifikasi lesi.
 
 > ⚠️ Hasil bersifat informatif, **bukan** pengganti diagnosis dokter.
 
+> 📁 Kode Flutter ada di folder [`mobile/`](../mobile/). Semua path di dokumentasi
+> ini (`lib/...`, `android/...`, `pubspec.yaml`, dst.) relatif terhadap `mobile/`.
+
 ## Ringkasan Cepat
 
 | Aspek | Keterangan |
@@ -54,6 +57,7 @@ bukan untuk klasifikasi lesi.
 ## Cara Menjalankan Singkat
 
 ```bash
+cd mobile
 flutter pub get
 flutter run
 ```

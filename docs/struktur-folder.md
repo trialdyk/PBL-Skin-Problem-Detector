@@ -2,26 +2,34 @@
 
 ```
 PBL-Skin-Problem-Detector/
-├── lib/
-│   ├── main.dart                 # Entry point + DI + root widget
-│   ├── app_router.dart           # Konfigurasi go_router + guard auth
-│   ├── business/
-│   │   ├── bloc/                 # (placeholder — default pakai Cubit)
-│   │   └── cubit/                # State management
-│   ├── data/
-│   │   ├── models/               # Model data + skala GEA
-│   │   ├── repositories/         # Pemilik state sesi & orkestrasi
-│   │   └── services/             # Logika murni / akses platform
-│   └── presentation/
-│       ├── screens/              # Layar (halaman)
-│       ├── widgets/              # Widget yang dipakai ulang
-│       └── theme/                # Token warna, tema, font
-├── test/
-│   └── widget_test.dart          # Test render splash
-├── docs/                         # Dokumentasi (folder ini)
-├── android/ ios/ web/ windows/ linux/ macos/   # Folder platform (generated)
-└── pubspec.yaml                  # Dependensi & metadata
+├── mobile/                           # Aplikasi Flutter
+│   ├── lib/
+│   │   ├── main.dart                 # Entry point + DI + root widget
+│   │   ├── app_router.dart           # Konfigurasi go_router + guard auth
+│   │   ├── business/
+│   │   │   ├── bloc/                 # (placeholder — default pakai Cubit)
+│   │   │   └── cubit/                # State management
+│   │   ├── data/
+│   │   │   ├── models/               # Model data + skala GEA
+│   │   │   ├── repositories/         # Pemilik state sesi & orkestrasi
+│   │   │   └── services/             # Logika murni / akses platform
+│   │   └── presentation/
+│   │       ├── screens/              # Layar (halaman)
+│   │       ├── widgets/              # Widget yang dipakai ulang
+│   │       └── theme/                # Token warna, tema, font
+│   ├── test/
+│   │   └── widget_test.dart          # Test render splash
+│   ├── assets/                       # Gambar & logo
+│   ├── tools/                        # Script bantu (olah SVG logo)
+│   ├── android/ ios/ web/ windows/ linux/ macos/   # Folder platform (generated)
+│   └── pubspec.yaml                  # Dependensi & metadata
+├── backend/                          # API server
+├── machine-learning/                 # Dataset, training, dan model
+└── docs/                             # Dokumentasi (folder ini)
 ```
+
+Bagian di bawah ini menjelaskan isi `mobile/`; path yang disebut relatif
+terhadap folder tersebut.
 
 ## `lib/` — File Inti
 

@@ -20,7 +20,13 @@ flutter doctor
 
 ## Langkah Instalasi
 
+Semua perintah `flutter` dijalankan dari folder `mobile/`; path file di bawah
+juga relatif terhadap `mobile/`.
+
 ```bash
+# 0. Masuk ke folder aplikasi Flutter
+cd mobile
+
 # 1. Ambil dependensi
 flutter pub get
 
