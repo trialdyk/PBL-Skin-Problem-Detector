@@ -23,7 +23,7 @@ PBL-Skin-Problem-Detector/
 │   ├── tools/                        # Script bantu (olah SVG logo)
 │   ├── android/ ios/ web/ windows/ linux/ macos/   # Folder platform (generated)
 │   └── pubspec.yaml                  # Dependensi & metadata
-├── backend/                          # API server
+├── backend/                          # API server (FastAPI + PostgreSQL)
 ├── machine-learning/                 # Dataset, training, dan model
 └── docs/                             # Dokumentasi (folder ini)
 ```

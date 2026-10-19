@@ -7,7 +7,7 @@ Monorepo aplikasi pendeteksi tingkat keparahan jerawat berdasarkan skala **GEA (
 | Folder | Isi |
 |---|---|
 | [`mobile/`](mobile/) | Aplikasi Flutter (lihat [mobile/README.md](mobile/README.md)) |
-| [`backend/`](backend/) | API server |
+| [`backend/`](backend/) | API server FastAPI (lihat [backend/README.md](backend/README.md)) |
 | [`machine-learning/`](machine-learning/) | Dataset, training, dan model |
 | [`docs/`](docs/) | Dokumentasi proyek (mulai dari [docs/README.md](docs/README.md)) |
 
