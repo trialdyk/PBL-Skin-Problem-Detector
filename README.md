@@ -11,6 +11,12 @@ Monorepo aplikasi pendeteksi tingkat keparahan jerawat berdasarkan skala **GEA (
 | [`machine-learning/`](machine-learning/) | Dataset, training, dan model |
 | [`docs/`](docs/) | Dokumentasi proyek (mulai dari [docs/README.md](docs/README.md)) |
 
+## Model
+
+`custom_cnn_1.tflite` ada di `machine-learning/models/` (ikut di-commit, untuk di-embed ke back-end/mobile):
+
+https://github.com/trialdyk/PBL-Skin-Problem-Detector/blob/main/machine-learning/models/custom_cnn_1.tflite
+
 ## Menjalankan aplikasi mobile
 
 ```bash

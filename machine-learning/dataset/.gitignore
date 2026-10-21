@@ -1,0 +1,4 @@
+# Local datasets stay on disk and are not committed.
+# Download links: ../README.md
+*
+!.gitignore
