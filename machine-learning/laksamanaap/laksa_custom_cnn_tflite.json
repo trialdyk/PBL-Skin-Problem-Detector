@@ -1,0 +1,48 @@
+{
+  "input_shape": [
+    1,
+    224,
+    224,
+    3
+  ],
+  "input_dtype": "float32",
+  "color_mode": "RGB",
+  "pixel_range": [
+    0,
+    255
+  ],
+  "normalization_in_model": true,
+  "class_names": [
+    "IGA0",
+    "IGA1",
+    "IGA2",
+    "IGA3",
+    "IGA4"
+  ],
+  "gea_mapping": {
+    "IGA0": {
+      "grade": 0,
+      "label": "Bersih / Clear"
+    },
+    "IGA1": {
+      "grade": 1,
+      "label": "Hampir bersih / Almost clear"
+    },
+    "IGA2": {
+      "grade": 2,
+      "label": "Ringan / Mild"
+    },
+    "IGA3": {
+      "grade": 3,
+      "label": "Sedang / Moderate"
+    },
+    "IGA4": {
+      "grade": 4,
+      "label": "Berat / Severe"
+    }
+  },
+  "output": "softmax_scores",
+  "dataset": "taschenbier/acne-severity-classification/3",
+  "tensorflow_version": "2.19.1",
+  "max_abs_difference": 2.980232238769531e-07
+}
