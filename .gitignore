@@ -5,6 +5,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
+*.hprof
 
 # Python (backend, machine-learning)
 __pycache__/

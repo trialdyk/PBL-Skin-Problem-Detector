@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
 import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
+import 'package:pbl_skin_problem_detector/data/services/image_pick_service.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_bottom_nav.dart';
@@ -29,6 +30,7 @@ class ScanPhotoScreen extends StatefulWidget {
 
 class _ScanPhotoScreenState extends State<ScanPhotoScreen> {
   final _scroll = ScrollController();
+  final _picker = ImagePickService();
   final _continueKey = GlobalKey();
   final _rootKey = GlobalKey();
 
@@ -45,6 +47,12 @@ class _ScanPhotoScreenState extends State<ScanPhotoScreen> {
 
   void _open(SelfieAngle angle) {
     context.push('/scan/capture?angle=${angle.name}');
+  }
+
+  Future<void> _pickFromGallery(SelfieAngle angle) async {
+    final path = await _picker.pickFromGallery();
+    if (!mounted || path == null) return;
+    context.read<ScanCubit>().setSinglePhoto(angle, path);
   }
 
   void _continue(ScanState state) {
@@ -219,6 +227,7 @@ class _ScanPhotoScreenState extends State<ScanPhotoScreen> {
                                   isActive: angle == active,
                                   lockedBy: _lockedBy(angle, active),
                                   onTap: () => _open(angle),
+                                  onGallery: () => _pickFromGallery(angle),
                                   onLockedTap: () => showHint(
                                     context,
                                     'Selesaikan ${_lockedBy(angle, active)} terlebih '
@@ -424,6 +433,7 @@ class _AngleCard extends StatelessWidget {
     required this.isActive,
     required this.lockedBy,
     required this.onTap,
+    required this.onGallery,
     required this.onLockedTap,
   });
 
@@ -432,6 +442,7 @@ class _AngleCard extends StatelessWidget {
   final bool isActive;
   final String lockedBy;
   final VoidCallback onTap;
+  final VoidCallback onGallery;
   final VoidCallback onLockedTap;
 
   @override
@@ -442,7 +453,11 @@ class _AngleCard extends StatelessWidget {
       return _SavedCard(info: info, path: path!, onTap: onTap);
     }
     if (isActive) {
-      return _ActiveCard(info: info, onTap: onTap);
+      return _ActiveCard(
+        info: info,
+        onTap: onTap,
+        onGallery: onGallery,
+      );
     }
     return _LockedCard(
       info: info,
@@ -583,10 +598,15 @@ class _SavedCard extends StatelessWidget {
 
 /// Sudut yang sedang diambil — area putus-putus untuk membuka kamera.
 class _ActiveCard extends StatelessWidget {
-  const _ActiveCard({required this.info, required this.onTap});
+  const _ActiveCard({
+    required this.info,
+    required this.onTap,
+    required this.onGallery,
+  });
 
   final _AngleInfo info;
   final VoidCallback onTap;
+  final VoidCallback onGallery;
 
   @override
   Widget build(BuildContext context) {
@@ -662,6 +682,33 @@ class _ActiveCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
                       style: appFont(fontSize: 10, color: AppColors.inkMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Gap(10),
+            GestureDetector(
+              onTap: onGallery,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      LucideIcons.image,
+                      size: 15,
+                      color: AppColors.brand,
+                    ),
+                    const Gap(6),
+                    Text(
+                      'Pilih dari Galeri',
+                      style: appFont(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.brand,
+                      ),
                     ),
                   ],
                 ),
