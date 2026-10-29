@@ -25,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
   final _termsRecognizer = TapGestureRecognizer();
+  final _privacyRecognizer = TapGestureRecognizer();
 
   bool _googleLoading = false;
   bool _rememberMe = false;
@@ -69,6 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _termsRecognizer.onTap = _openTerms;
+    _privacyRecognizer.onTap = _openPrivacy;
     _emailFocus.addListener(_onEmailFocusChanged);
     _passwordFocus.addListener(_onPasswordFocusChanged);
   }
@@ -80,10 +82,13 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailFocus.dispose();
     _passwordFocus.dispose();
     _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
     super.dispose();
   }
 
   void _openTerms() => context.push('/terms');
+
+  void _openPrivacy() => context.push('/privacy');
 
   // --- Validasi -------------------------------------------------------------
 
@@ -198,9 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: _BackCircleButton(
-                      onPressed: loading
-                          ? null
-                          : () => context.go('/splash'),
+                      onPressed: loading ? null : () => context.go('/splash'),
                     ),
                   ),
                 ),
@@ -469,7 +472,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const TextSpan(text: 'Dengan masuk, Anda menyetujui '),
                 _linkSpan('Syarat & Ketentuan', recognizer: _termsRecognizer),
                 const TextSpan(text: ' serta '),
-                _linkSpan('Kebijakan Privasi'),
+                _linkSpan('Kebijakan Privasi', recognizer: _privacyRecognizer),
                 const TextSpan(text: ' aplikasi ini.'),
               ],
             ),
@@ -480,14 +483,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  static TextSpan _linkSpan(
-    String text, {
-    GestureRecognizer? recognizer,
-  }) => TextSpan(
-    text: text,
-    style: appFont(color: AppColors.brand, fontWeight: FontWeight.w600),
-    recognizer: recognizer,
-  );
+  static TextSpan _linkSpan(String text, {GestureRecognizer? recognizer}) =>
+      TextSpan(
+        text: text,
+        style: appFont(color: AppColors.brand, fontWeight: FontWeight.w600),
+        recognizer: recognizer,
+      );
 }
 
 class _BackCircleButton extends StatelessWidget {

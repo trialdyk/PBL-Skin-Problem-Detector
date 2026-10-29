@@ -13,6 +13,7 @@ import 'package:pbl_skin_problem_detector/presentation/screens/diagnosis_screen.
 import 'package:pbl_skin_problem_detector/presentation/screens/home_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/interview_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/login_screen.dart';
+import 'package:pbl_skin_problem_detector/presentation/screens/privacy_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/scan_capture_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/scan_confirm_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/scan_photo_screen.dart';
@@ -22,7 +23,7 @@ import 'package:pbl_skin_problem_detector/presentation/screens/terms_screen.dart
 import 'package:pbl_skin_problem_detector/presentation/screens/welcome_screen.dart';
 
 GoRouter createRouter(AuthCubit authCubit) {
-  const publicRoutes = {'/splash', '/welcome', '/login', '/terms'};
+  const publicRoutes = {'/splash', '/welcome', '/login', '/terms', '/privacy'};
 
   return GoRouter(
     initialLocation: '/splash',
@@ -52,6 +53,10 @@ GoRouter createRouter(AuthCubit authCubit) {
       GoRoute(
         path: '/terms',
         builder: (context, state) => const TermsScreen(),
+      ),
+      GoRoute(
+        path: '/privacy',
+        builder: (context, state) => const PrivacyScreen(),
       ),
       GoRoute(
         path: '/home',
