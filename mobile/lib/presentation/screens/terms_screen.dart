@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart' show SelectableText;
 import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart' hide SelectableText;
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class TermsScreen extends StatelessWidget {
   const TermsScreen({super.key});
@@ -43,7 +42,7 @@ class TermsScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: SelectableText.rich(
+                  child: Text.rich(
                     TextSpan(
                       style: appFont(
                         fontSize: 13,
