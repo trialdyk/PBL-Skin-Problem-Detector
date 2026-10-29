@@ -1,0 +1,5 @@
+,Mild,Moderate,Severe,Very Severe
+Mild,70,32,0,0
+Moderate,29,86,4,2
+Severe,1,17,10,7
+Very Severe,0,1,5,20

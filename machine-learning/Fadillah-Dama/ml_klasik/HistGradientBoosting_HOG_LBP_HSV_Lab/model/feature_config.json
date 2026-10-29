@@ -1,0 +1,70 @@
+{
+  "feature_version": "skin_contrast_v1",
+  "feature_group": "skin_spatial",
+  "spatial_descriptor_version": "spatial_v1",
+  "image_size": [
+    512,
+    512
+  ],
+  "color_space": "RGB",
+  "interpolation": "INTER_AREA",
+  "grids": [
+    1,
+    2
+  ],
+  "histogram_bins": 16,
+  "color_features": [
+    "HSV",
+    "Lab"
+  ],
+  "mask": {
+    "Cr": [
+      130,
+      185
+    ],
+    "Cb": [
+      65,
+      140
+    ],
+    "minimum_value": 40,
+    "opening_kernel": 3,
+    "minimum_fraction": 0.05,
+    "fallback_rectangle": [
+      51,
+      461,
+      51,
+      461
+    ]
+  },
+  "local_contrast_sigmas": [
+    2,
+    4,
+    8
+  ],
+  "redness_thresholds": [
+    2,
+    4,
+    8
+  ],
+  "dark_contrast_thresholds": [
+    5,
+    10,
+    20
+  ],
+  "component_area_bins": [
+    1,
+    4,
+    16,
+    64,
+    256,
+    1024,
+    1000000000
+  ],
+  "class_names": {
+    "0": "Mild",
+    "1": "Moderate",
+    "2": "Severe",
+    "3": "Very Severe"
+  },
+  "n_features": 6259
+}
