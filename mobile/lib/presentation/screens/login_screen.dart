@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/auth_cubit.dart';
@@ -23,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
+  final _termsRecognizer = TapGestureRecognizer();
 
   bool _googleLoading = false;
   bool _rememberMe = false;
@@ -66,6 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    _termsRecognizer.onTap = _openTerms;
     _emailFocus.addListener(_onEmailFocusChanged);
     _passwordFocus.addListener(_onPasswordFocusChanged);
   }
@@ -76,8 +79,11 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     _emailFocus.dispose();
     _passwordFocus.dispose();
+    _termsRecognizer.dispose();
     super.dispose();
   }
+
+  void _openTerms() => context.push('/terms');
 
   // --- Validasi -------------------------------------------------------------
 
@@ -461,7 +467,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               children: [
                 const TextSpan(text: 'Dengan masuk, Anda menyetujui '),
-                _linkSpan('Syarat & Ketentuan'),
+                _linkSpan('Syarat & Ketentuan', recognizer: _termsRecognizer),
                 const TextSpan(text: ' serta '),
                 _linkSpan('Kebijakan Privasi'),
                 const TextSpan(text: ' aplikasi ini.'),
@@ -474,9 +480,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  static TextSpan _linkSpan(String text) => TextSpan(
+  static TextSpan _linkSpan(
+    String text, {
+    GestureRecognizer? recognizer,
+  }) => TextSpan(
     text: text,
     style: appFont(color: AppColors.brand, fontWeight: FontWeight.w600),
+    recognizer: recognizer,
   );
 }
 

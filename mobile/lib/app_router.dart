@@ -18,10 +18,11 @@ import 'package:pbl_skin_problem_detector/presentation/screens/scan_confirm_scre
 import 'package:pbl_skin_problem_detector/presentation/screens/scan_photo_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/scan_upload_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/splash_screen.dart';
+import 'package:pbl_skin_problem_detector/presentation/screens/terms_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/welcome_screen.dart';
 
 GoRouter createRouter(AuthCubit authCubit) {
-  const publicRoutes = {'/splash', '/welcome', '/login'};
+  const publicRoutes = {'/splash', '/welcome', '/login', '/terms'};
 
   return GoRouter(
     initialLocation: '/splash',
@@ -47,6 +48,10 @@ GoRouter createRouter(AuthCubit authCubit) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/terms',
+        builder: (context, state) => const TermsScreen(),
       ),
       GoRoute(
         path: '/home',
