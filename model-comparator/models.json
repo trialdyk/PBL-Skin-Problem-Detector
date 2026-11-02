@@ -1,0 +1,42 @@
+[
+  {
+    "id": "aldy-01",
+    "name": "Aldy 01",
+    "description": "EfficientNetB2 · seed 42",
+    "file": "model/acne_model_seed42.keras",
+    "labels": ["IGA0 · Bersih", "IGA1 · Hampir bersih", "IGA2 · Ringan", "IGA3 · Sedang", "IGA4 · Berat"],
+    "content_crop": false
+  },
+  {
+    "id": "aldy-02",
+    "name": "Aldy 02",
+    "description": "EfficientNetB3 ensemble 3 model · TFLite FP16",
+    "file": "model/acne_severity_fp16.tflite",
+    "labels": ["IGA0 · Bersih", "IGA1 · Hampir bersih", "IGA2 · Ringan", "IGA3 · Sedang", "IGA4 · Berat"],
+    "content_crop": true
+  },
+  {
+    "id": "dama",
+    "name": "Dama",
+    "description": "Custom CNN · Keras",
+    "file": "model/dermascan_custom_cnn_best.keras",
+    "labels": ["IGA0 · Bersih", "IGA1 · Hampir bersih", "IGA2 · Ringan", "IGA3 · Sedang", "IGA4 · Berat"],
+    "content_crop": false
+  },
+  {
+    "id": "laksa",
+    "name": "Laksa",
+    "description": "Custom CNN · TFLite",
+    "file": "model/laksa_custom_cnn.tflite",
+    "labels": ["IGA0 · Bersih", "IGA1 · Hampir bersih", "IGA2 · Ringan", "IGA3 · Sedang", "IGA4 · Berat"],
+    "content_crop": false
+  },
+  {
+    "id": "marsy",
+    "name": "Marsy",
+    "description": "MobileNetV2 pretrained · TFLite",
+    "file": "model/dermascan_mobilenetv2_pretrained.tflite",
+    "labels": ["IGA0 · Bersih", "IGA1 · Hampir bersih", "IGA2 · Ringan", "IGA3 · Sedang", "IGA4 · Berat"],
+    "content_crop": false
+  }
+]
