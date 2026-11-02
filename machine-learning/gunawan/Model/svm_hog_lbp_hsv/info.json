@@ -1,0 +1,35 @@
+{
+  "model": "svm_hog_lbp_hsv",
+  "class_names": [
+    "mild",
+    "moderate",
+    "severe",
+    "very_severe"
+  ],
+  "base_size": 256,
+  "params": "{'svc__C': 100, 'svc__gamma': 0.0001, 'svc__kernel': 'rbf'}",
+  "trained_on_images": 1411,
+  "cross_validation": {
+    "accuracy": {
+      "mean": 0.5572,
+      "std": 0.0364
+    },
+    "macro_f1": {
+      "mean": 0.5179,
+      "std": 0.0437
+    },
+    "balanced_accuracy": {
+      "mean": 0.5161,
+      "std": 0.0509
+    },
+    "qwk": {
+      "mean": 0.6111,
+      "std": 0.0729
+    },
+    "mae": {
+      "mean": 0.5036,
+      "std": 0.0563
+    }
+  },
+  "exported": "2026-11-02T01:10:08"
+}
