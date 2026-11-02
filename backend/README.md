@@ -136,6 +136,12 @@ alembic current
 
 Harus menampilkan revision head (contoh: `20260316_0001 (head)`).
 
+Buat akun demo untuk login dari aplikasi (`pengguna@gmail.com` / `skinscan123`, sama dengan akun demo di mobile):
+
+```bash
+python -m app.db.seed
+```
+
 ### 7. Jalankan server
 
 Pastikan virtualenv aktif, atau pakai `run.sh` (otomatis memakai `.venv` bila ada).
@@ -256,6 +262,42 @@ curl http://127.0.0.1:8000/users/status
 curl http://127.0.0.1:8000/items/status
 ```
 
+### Login
+
+`POST /auth/login` memakai kolom yang sama dengan form login di aplikasi mobile:
+
+```json
+{
+  "email": "pengguna@gmail.com",
+  "password": "skinscan123",
+  "accepted_terms": true,
+  "accepted_privacy": true
+}
+```
+
+Respons `200`:
+
+```json
+{
+  "access_token": "<jwt>",
+  "token_type": "bearer",
+  "expires_in": 86400,
+  "user": {
+    "id": "<uuid>",
+    "email": "pengguna@gmail.com",
+    "full_name": "Pengguna Demo"
+  }
+}
+```
+
+| Status | Kondisi |
+|--------|---------|
+| `400` | Syarat & Ketentuan atau Kebijakan Privasi belum dicentang |
+| `401` | Email atau kata sandi salah, atau akun nonaktif |
+| `422` | Format email salah, atau kolom kosong / tidak lengkap |
+
+Pesan `400` dan `401` ada di field `detail` dan bisa langsung ditampilkan ke pengguna.
+
 ---
 
 ## Struktur folder
@@ -304,6 +346,7 @@ PBL-Skin-Problem-Detector-BE/
 - Tabel `users`
 - Dependency `get_db`
 - `GET /health` (tidak bergantung DB)
+- `POST /auth/login` (JWT, password Argon2)
 - Suite pytest
 
 **Belum dikerjakan (deferred)**

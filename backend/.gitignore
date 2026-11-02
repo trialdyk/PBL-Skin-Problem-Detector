@@ -47,7 +47,7 @@ temp/
 *.tmp
 
 # Local model artifacts and private datasets
-models/
+/models/
 datasets/
 *.pt
 *.pth

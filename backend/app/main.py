@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 
 from app.core.config import get_settings
-from app.routers import items, users
+from app.routers import auth, items, users
 
 settings = get_settings()
 
@@ -16,6 +16,7 @@ app = FastAPI(
     debug=settings.debug,
 )
 
+app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(items.router)
 

@@ -2,8 +2,10 @@
 
 from functools import lru_cache
 
-from pydantic import computed_field
+from pydantic import computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_DEV_JWT_SECRET = "dermascan-dev-only-secret-do-not-use-in-production"
 
 
 class Settings(BaseSettings):
@@ -26,6 +28,16 @@ class Settings(BaseSettings):
     db_password: str = ""
     db_name: str = "dermascan"
     db_ssl_mode: str = "disable"
+
+    jwt_secret_key: str = _DEV_JWT_SECRET
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 24
+
+    @model_validator(mode="after")
+    def _require_jwt_secret_outside_development(self) -> "Settings":
+        if self.app_env != "development" and self.jwt_secret_key == _DEV_JWT_SECRET:
+            raise ValueError("JWT_SECRET_KEY must be set outside development")
+        return self
 
     @computed_field  # type: ignore[prop-decorator]
     @property
