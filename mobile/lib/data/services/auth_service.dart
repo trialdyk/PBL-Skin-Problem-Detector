@@ -15,13 +15,19 @@ class AuthException implements Exception {
 }
 
 class AuthService {
-  /// Akun demo prototipe (email/password lokal). Selain kombinasi ini login ditolak.
+  /// Akun demo lokal (hanya dipakai saat [mockRemoteAuth] = true di widget test).
   static const String demoEmail = 'pengguna@gmail.com';
   static const String demoPassword = 'skinscan123';
 
-  /// Widget tests set this so Google SDK + network are skipped.
+  /// Widget tests: skip Google SDK + HTTP ke backend.
   @visibleForTesting
-  static bool mockGoogleSignIn = false;
+  static bool mockRemoteAuth = false;
+
+  /// Alias lama untuk kompatibilitas test.
+  @visibleForTesting
+  static bool get mockGoogleSignIn => mockRemoteAuth;
+  @visibleForTesting
+  static set mockGoogleSignIn(bool value) => mockRemoteAuth = value;
 
   http.Client? _http;
   GoogleSignIn? _googleSignIn;
@@ -40,30 +46,40 @@ class AuthService {
         scopes: const ['email', 'profile'],
       );
 
-  /// [viaGoogle] menandai jalur mock lama (tes / fallback). Prefer
-  /// [loginWithGoogle] untuk OAuth sungguhan.
+  /// Email/password → `POST /auth/login` (production by default).
   Future<UserModel> login({
     required String email,
     required String password,
     required bool acceptedTerms,
     bool viaGoogle = false,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-
     if (!acceptedTerms) {
       throw AuthException(
         'Centang Syarat & Ketentuan serta Kebijakan Privasi terlebih dahulu.',
       );
     }
 
-    if (!viaGoogle && !_credentialsMatch(email, password)) {
-      throw AuthException('Email atau kata sandi salah. Periksa kembali.');
+    if (mockRemoteAuth || viaGoogle) {
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      if (!viaGoogle && !_credentialsMatch(email, password)) {
+        throw AuthException('Email atau kata sandi salah. Periksa kembali.');
+      }
+      return UserModel(email: email.trim(), accessToken: 'mock-token');
     }
 
-    return UserModel(email: email.trim());
+    return _postAuth(
+      path: '/auth/login',
+      body: {
+        'email': email.trim(),
+        'password': password,
+        'accepted_terms': true,
+        'accepted_privacy': true,
+      },
+      fallbackError: 'Email atau kata sandi salah. Periksa kembali.',
+    );
   }
 
-  /// Google Sign-In → `id_token` → `POST /auth/google` → JWT DermaScan.
+  /// Google Sign-In → `id_token` → `POST /auth/google`.
   Future<UserModel> loginWithGoogle({required bool acceptedTerms}) async {
     if (!acceptedTerms) {
       throw AuthException(
@@ -71,7 +87,7 @@ class AuthService {
       );
     }
 
-    if (mockGoogleSignIn) {
+    if (mockRemoteAuth) {
       await Future<void>.delayed(const Duration(milliseconds: 400));
       return const UserModel(email: demoEmail, accessToken: 'mock-google-token');
     }
@@ -87,37 +103,50 @@ class AuthService {
       throw AuthException('Token Google tidak tersedia. Coba lagi.');
     }
 
-    return _exchangeGoogleIdToken(idToken);
+    return _postAuth(
+      path: '/auth/google',
+      body: {
+        'id_token': idToken,
+        'accepted_terms': true,
+        'accepted_privacy': true,
+      },
+      fallbackError: 'Login Google gagal. Coba lagi.',
+    );
   }
 
-  Future<UserModel> _exchangeGoogleIdToken(String idToken) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/auth/google');
+  Future<UserModel> _postAuth({
+    required String path,
+    required Map<String, Object?> body,
+    required String fallbackError,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}$path');
     late final http.Response response;
     try {
       response = await _client
           .post(
             uri,
-            headers: const {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'id_token': idToken,
-              'accepted_terms': true,
-              'accepted_privacy': true,
-            }),
+            headers: const {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 20));
     } catch (_) {
       throw AuthException(
-        'Tidak bisa menghubungi server. Pastikan backend berjalan.',
+        'Tidak bisa menghubungi server. Cek koneksi internet.',
       );
     }
 
-    if (response.statusCode == 200) {
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-      return UserModel.fromAuthJson(body);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return UserModel.fromAuthJson(decoded);
+      }
+      throw AuthException(fallbackError);
     }
 
-    final detail = _readDetail(response.body);
-    throw AuthException(detail ?? 'Login Google gagal. Coba lagi.');
+    throw AuthException(_readDetail(response.body) ?? fallbackError);
   }
 
   String? _readDetail(String body) {

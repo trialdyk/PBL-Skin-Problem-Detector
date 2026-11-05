@@ -154,11 +154,11 @@ void _expectReadableScale(
 
 void main() {
   setUp(() {
-    AuthService.mockGoogleSignIn = true;
+    AuthService.mockRemoteAuth = true;
   });
 
   tearDown(() {
-    AuthService.mockGoogleSignIn = false;
+    AuthService.mockRemoteAuth = false;
   });
 
   testWidgets('Email & kata sandi kosong → bubble inline, bukan panel', (
