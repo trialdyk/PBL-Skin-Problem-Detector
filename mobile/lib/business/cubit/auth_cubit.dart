@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/auth_state.dart';
 import 'package:pbl_skin_problem_detector/data/repositories/auth_repository.dart';
-import 'package:pbl_skin_problem_detector/data/services/auth_service.dart';
+import 'package:pbl_skin_problem_detector/data/services/auth/auth.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   AuthCubit(this._repository) : super(const AuthState());

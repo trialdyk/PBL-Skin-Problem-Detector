@@ -5,7 +5,7 @@ import 'package:pbl_skin_problem_detector/business/cubit/auth_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_cubit.dart';
 import 'package:pbl_skin_problem_detector/data/repositories/auth_repository.dart';
 import 'package:pbl_skin_problem_detector/data/repositories/scan_repository.dart';
-import 'package:pbl_skin_problem_detector/data/services/auth_service.dart';
+import 'package:pbl_skin_problem_detector/data/services/auth/auth.dart';
 import 'package:pbl_skin_problem_detector/data/services/gea_diagnosis_service.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_theme.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
