@@ -167,6 +167,9 @@ Contoh acuan: `POST /auth/login` (`routers/auth.py`, `schemas/auth.py`,
 - **Kontrak dengan app mobile.** Teks `detail` untuk `400`/`401` tampil ke pengguna
   dan nama field dipakai Flutter. Mengubahnya berarti mengubah `../mobile/` juga.
   `422` memakai format bawaan FastAPI (`detail` berupa list, pesan Inggris) dan tidak boleh ditampilkan langsung.
+- **Google Sign-In.** `GOOGLE_CLIENT_ID` = Web client ID. Flutter `serverClientId`
+  harus sama. Migrasi `20261105_0002` menambah `auth_provider` / `google_sub` dan
+  membuat `password_hash` nullable. Setelah pull: `alembic upgrade head`.
 - **Jangan melebarkan `.gitignore`.** Aturan `/models/` sengaja diberi `/` di depan.
   Versi tanpa `/` pernah menyembunyikan `app/models/` dari git dan merusak Alembic
   untuk semua orang. Setelah menambah folder baru, cek dengan `git status` atau `git check-ignore -v <path>`.
