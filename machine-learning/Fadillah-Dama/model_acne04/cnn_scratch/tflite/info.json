@@ -1,0 +1,53 @@
+{
+  "model": "cnn_scratch",
+  "input": {
+    "shape": [
+      1,
+      256,
+      256,
+      3
+    ],
+    "dtype": "float32 (float32, dynamic_range) or uint8 (int8)",
+    "values": "raw RGB pixels 0-255, letterboxed to a square with (128,128,128) padding"
+  },
+  "output": {
+    "shape": [
+      1,
+      4
+    ],
+    "class_names": [
+      "mild",
+      "moderate",
+      "severe",
+      "very_severe"
+    ],
+    "note": "logits; apply softmax for probabilities"
+  },
+  "files": [
+    "dynamic_range.tflite",
+    "float32.tflite",
+    "int8.tflite"
+  ],
+  "cross_validation": {
+    "accuracy": {
+      "mean": 0.7482,
+      "std": 0.0279
+    },
+    "macro_f1": {
+      "mean": 0.7259,
+      "std": 0.0408
+    },
+    "balanced_accuracy": {
+      "mean": 0.7444,
+      "std": 0.0424
+    },
+    "qwk": {
+      "mean": 0.8501,
+      "std": 0.0162
+    },
+    "mae": {
+      "mean": 0.2582,
+      "std": 0.0289
+    }
+  }
+}
