@@ -6,5 +6,8 @@ Aturan struktur kode, langkah menambah endpoint, dan perintah ada di `AGENTS.md`
 (diimpor di atas). Jangan menyalin isinya ke sini; ubah `AGENTS.md` saja.
 
 - Kerjakan dari folder `backend/`. Gunakan `.venv` di folder ini.
-- Jika menambah atau mengubah endpoint, perbarui `../docs/api.md` di perubahan yang sama.
+- Kontrak API = `openapi.json`, bukan markdown yang ditulis dari kode.
+  Setelah menambah/mengubah endpoint: `python scripts/export_openapi.py`, lalu
+  sesuaikan `../docs/api.md` hanya untuk konteks non-OpenAPI (mobile/env/keamanan).
+  Pastikan `pytest tests/test_openapi.py` hijau.
 - Commit tanpa baris `Co-Authored-By`.

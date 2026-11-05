@@ -237,7 +237,23 @@ The health endpoint must not depend on database availability, Cloudflare R2, aut
 
 The API must not use `/v1` or `/v2` prefixes. All routes should follow the requested non-versioned architecture.
 
-Ensure the development API documentation is available through FastAPI's default documentation interface.
+Ensure the development API documentation is available through FastAPI's default documentation interface (`/docs`, `/redoc`, `/openapi.json`).
+
+### OpenAPI as the API documentation source of truth
+
+Do **not** maintain endpoint contracts by hand-copying fields from Python routers into markdown.
+
+Requirements for agents and future endpoint work:
+1. Treat FastAPI's generated OpenAPI schema as the contract: live at `/openapi.json`, committed snapshot at `openapi.json` in the backend root.
+2. After any change to routers, Pydantic schemas, `response_model`, declared `responses`, operation `summary`/docstrings, or `openapi_tags`, regenerate the snapshot:
+
+```bash
+python scripts/export_openapi.py
+```
+
+3. Keep a pytest check (`tests/test_openapi.py`) that fails when `openapi.json` does not equal `app.openapi()`.
+4. Human docs such as `docs/api.md` may hold **non-OpenAPI context only** (mobile base URLs, Flutter field mapping, environment variables, security notes). They must not replace or diverge from `openapi.json` for paths, request bodies, or response schemas.
+5. Never edit `openapi.json` by hand; always export from the running application definition.
 
 ## 9. Router Initialization
 
@@ -337,14 +353,17 @@ Create a practical `README.md` containing:
 - How to run the application using `run.sh`.
 - The equivalent Uvicorn command.
 - Health-check endpoint.
-- FastAPI documentation URLs.
-- Automated testing instructions.
+- FastAPI documentation URLs (`/docs`, `/redoc`, `/openapi.json`).
+- How to regenerate `openapi.json` with `python scripts/export_openapi.py`.
+- Automated testing instructions (including OpenAPI snapshot sync).
 - Current implementation scope.
 - Features deferred to subsequent development tasks.
 
 Make the instructions suitable for team members using Windows, macOS, or Linux where practical.
 
 Clearly distinguish implemented functionality from planned functionality.
+
+When documenting the API for humans or other agents, **prefer the OpenAPI JSON** over rewriting endpoint tables from source. Point readers to `openapi.json` / `/docs` for the contract.
 
 ## 14. Scope Restrictions
 
@@ -408,5 +427,7 @@ PBL-04 is complete when:
 - The test suite passes, or any execution limitations are explicitly reported.
 - `run.sh` works in a compatible shell.
 - `README.md` enables another developer to set up and run the project.
+
+**Ongoing (post PBL-04) documentation rule for agents:** Any new or changed endpoint is unfinished until `openapi.json` is regenerated via `scripts/export_openapi.py` and `tests/test_openapi.py` passes. Do not invent API docs from reading Python alone.
 
 **Final instruction:** Follow the specified folder structure exactly, do not introduce API versioning, use `requirements.txt` for dependency management, and prioritize simplicity, maintainability, and reproducibility. Implement only the repository foundation required for PBL-04.
