@@ -1,0 +1,35 @@
+{
+  "model": "cnn_scratch",
+  "class_names": [
+    "mild",
+    "moderate",
+    "severe",
+    "very_severe"
+  ],
+  "base_size": 256,
+  "params": "fixed",
+  "trained_on_images": 1402,
+  "cross_validation": {
+    "accuracy": {
+      "mean": 0.7482,
+      "std": 0.0279
+    },
+    "macro_f1": {
+      "mean": 0.7259,
+      "std": 0.0408
+    },
+    "balanced_accuracy": {
+      "mean": 0.7444,
+      "std": 0.0424
+    },
+    "qwk": {
+      "mean": 0.8501,
+      "std": 0.0162
+    },
+    "mae": {
+      "mean": 0.2582,
+      "std": 0.0289
+    }
+  },
+  "exported": "2026-11-05T05:29:45"
+}
