@@ -1,6 +1,6 @@
 """Password hashing and JWT access tokens."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import jwt
 from argon2 import PasswordHasher
@@ -27,7 +27,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 def create_access_token(subject: str) -> str:
     """Create a signed, expiring JWT for ``subject`` (the user id)."""
     settings = get_settings()
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
     payload = {
         "sub": subject,
         "iat": now,

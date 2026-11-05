@@ -264,57 +264,36 @@ curl http://127.0.0.1:8000/items/status
 
 ### Login
 
-`POST /auth/login` memakai kolom yang sama dengan form login di aplikasi mobile:
+`POST /auth/login` menerima `email`, `password`, `accepted_terms`, dan `accepted_privacy`,
+lalu mengembalikan JWT dan data user. Akun demo dibuat dengan `python -m app.db.seed`.
 
-```json
-{
-  "email": "pengguna@gmail.com",
-  "password": "skinscan123",
-  "accepted_terms": true,
-  "accepted_privacy": true
-}
+```bash
+curl -X POST http://127.0.0.1:8000/auth/login   -H "Content-Type: application/json"   -d '{"email":"pengguna@gmail.com","password":"skinscan123","accepted_terms":true,"accepted_privacy":true}'
 ```
 
-Respons `200`:
-
-```json
-{
-  "access_token": "<jwt>",
-  "token_type": "bearer",
-  "expires_in": 86400,
-  "user": {
-    "id": "<uuid>",
-    "email": "pengguna@gmail.com",
-    "full_name": "Pengguna Demo"
-  }
-}
-```
-
-| Status | Kondisi |
-|--------|---------|
-| `400` | Syarat & Ketentuan atau Kebijakan Privasi belum dicentang |
-| `401` | Email atau kata sandi salah, atau akun nonaktif |
-| `422` | Format email salah, atau kolom kosong / tidak lengkap |
-
-Pesan `400` dan `401` ada di field `detail` dan bisa langsung ditampilkan ke pengguna.
+Dokumentasi lengkap (field, kode status, format error, konfigurasi, catatan keamanan):
+[docs/api.md](../docs/api.md). Swagger interaktif ada di http://127.0.0.1:8000/docs.
 
 ---
 
 ## Struktur folder
 
 ```text
-PBL-Skin-Problem-Detector-BE/
+backend/
+├── AGENTS.md                # Aturan struktur kode + cara menambah API
+├── CLAUDE.md                # Mengimpor AGENTS.md untuk Claude Code
 ├── app/
 │   ├── main.py              # Entry FastAPI + GET /health
 │   ├── dependencies.py      # Depends (get_db)
-│   ├── routers/             # Router API publik
+│   ├── routers/             # Router API publik (auth, users, items)
 │   ├── internal/            # Modul internal/admin (reserved)
-│   ├── core/                # Config & security
+│   ├── core/                # Config, hashing password, JWT
 │   ├── models/              # Model ORM (User)
-│   ├── schemas/             # Schema Pydantic (reserved)
-│   ├── services/            # Business logic (reserved)
+│   ├── schemas/             # Schema Pydantic request/response
+│   ├── services/            # Business logic
 │   └── db/
 │       ├── database.py      # Engine, session, Base
+│       ├── seed.py          # Akun demo (python -m app.db.seed)
 │       └── migrations/      # Script Alembic
 ├── tests/
 ├── alembic.ini
@@ -333,6 +312,8 @@ PBL-Skin-Problem-Detector-BE/
 | `app/db/migrations/` | Migrasi Alembic |
 | `app/models/` | Model ORM (`User` sudah ada) |
 | `app/routers/` | Endpoint HTTP |
+| `app/schemas/` | Bentuk request/respons (Pydantic) |
+| `app/services/` | Logika bisnis (tanpa HTTP) |
 | `tests/` | Automated tests |
 
 ---
@@ -350,8 +331,9 @@ PBL-Skin-Problem-Detector-BE/
 - Suite pytest
 
 **Belum dikerjakan (deferred)**
-- Register / login API
-- JWT & password hashing
+- Register, profil, refresh token, logout
+- Verifikasi JWT (dependency `get_current_user`) dan endpoint terlindungi
+- Rate limit login, CORS
 - Tabel analysis / images / results
 - Cloudflare R2, upload gambar, inference ML
 - Deploy production

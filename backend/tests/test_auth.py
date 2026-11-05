@@ -113,9 +113,33 @@ def test_login_requires_both_consents(client: TestClient, field: str) -> None:
     )
 
 
+@pytest.mark.parametrize("value", ["yes", "true", 1, "on", None])
+@pytest.mark.parametrize("field", ["accepted_terms", "accepted_privacy"])
+def test_login_consent_must_be_a_real_boolean(
+    client: TestClient,
+    field: str,
+    value: object,
+) -> None:
+    response = client.post("/auth/login", json=login_body(**{field: value}))
+    assert response.status_code == 422
+
+
+def test_openapi_documents_login_responses(client: TestClient) -> None:
+    operation = client.get("/openapi.json").json()["paths"]["/auth/login"]["post"]
+    assert {"200", "400", "401", "422"} <= set(operation["responses"])
+    schema = client.get("/openapi.json").json()["components"]["schemas"]["LoginRequest"]
+    assert schema["examples"][0]["email"] == EMAIL
+
+
 @pytest.mark.parametrize(
     "overrides",
-    [{"email": ""}, {"email": "bukan-email"}, {"password": ""}],
+    [
+        {"email": ""},
+        {"email": "bukan-email"},
+        {"email": "a" * 251 + "@b.cc"},
+        {"password": ""},
+        {"password": "a" * 129},
+    ],
 )
 def test_login_validates_form_fields(client: TestClient, overrides: dict[str, str]) -> None:
     response = client.post("/auth/login", json=login_body(**overrides))

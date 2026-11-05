@@ -6,15 +6,34 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.security import create_access_token
 from app.dependencies import get_db
-from app.schemas.auth import LoginRequest, LoginResponse, UserResponse
+from app.schemas.auth import ErrorResponse, LoginRequest, LoginResponse, UserResponse
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login")
+@router.post(
+    "/login",
+    summary="Login with email and password",
+    responses={
+        400: {
+            "model": ErrorResponse,
+            "description": "Syarat & Ketentuan or Kebijakan Privasi not accepted.",
+        },
+        401: {
+            "model": ErrorResponse,
+            "description": "Wrong email or password, or the account is inactive.",
+        },
+    },
+)
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
-    """Log in with email and password. ``detail`` messages are shown as-is by the app."""
+    """Log in with email and password.
+
+    The 400 and 401 ``detail`` strings are Indonesian and shown as-is by the app.
+    The consent check runs before the credential check, so unaccepted terms
+    return 400 even when the password is wrong. 422 means the body is malformed
+    and its ``detail`` is a list, not a string.
+    """
     if not (payload.accepted_terms and payload.accepted_privacy):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

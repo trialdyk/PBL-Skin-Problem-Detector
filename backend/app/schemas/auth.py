@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StringConstraints
 
 # Same format the Flutter login form accepts (`LoginScreen._emailPattern`).
 Email = Annotated[
@@ -20,10 +20,30 @@ Email = Annotated[
 class LoginRequest(BaseModel):
     """Fields of the mobile login form."""
 
-    email: Email
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "email": "pengguna@gmail.com",
+                    "password": "skinscan123",
+                    "accepted_terms": True,
+                    "accepted_privacy": True,
+                }
+            ]
+        }
+    )
+
+    email: Email = Field(description="Trimmed and lowercased by the server.")
     password: str = Field(min_length=1, max_length=128)
-    accepted_terms: bool
-    accepted_privacy: bool
+    # Strict so that "yes", 1, "on" etc. cannot count as consent.
+    accepted_terms: StrictBool = Field(description="Syarat & Ketentuan checkbox.")
+    accepted_privacy: StrictBool = Field(description="Kebijakan Privasi checkbox.")
+
+
+class ErrorResponse(BaseModel):
+    """Body of 400 and 401 responses. ``detail`` is user-facing Indonesian text."""
+
+    detail: str
 
 
 class UserResponse(BaseModel):

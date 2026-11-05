@@ -1,0 +1,146 @@
+# AGENTS.md — Backend DermaScan
+
+Panduan untuk developer dan AI agent yang mengubah kode di folder `backend/`.
+Ikuti struktur dan langkah di sini supaya endpoint baru konsisten dengan yang
+sudah ada. Referensi API yang berlaku: [docs/api.md](../docs/api.md).
+
+## Ringkasan
+
+- FastAPI + Pydantic v2, SQLAlchemy 2.0 (gaya `Mapped[...]`), Alembic, PostgreSQL (psycopg3).
+- Python 3.10+ (disarankan 3.12). Jangan pakai fitur yang baru ada di 3.11+ (mis. `datetime.UTC`).
+- Dipanggil oleh aplikasi Flutter di `../mobile/`. Teks yang tampil ke pengguna
+  berbahasa Indonesia; docstring dan komentar kode berbahasa Inggris.
+- Sudah jadi: `GET /health`, `POST /auth/login`. `users` dan `items` masih placeholder.
+- Belum ada: verifikasi JWT, endpoint terlindungi, registrasi, rate limit, CORS.
+
+## Perintah
+
+Jalankan dari folder `backend/` dengan virtualenv aktif.
+
+```bash
+python -m venv .venv
+.venv\Scripts\Activate.ps1          # Windows PowerShell; macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env                # lalu isi DB_PASSWORD
+
+alembic upgrade head                # butuh Postgres di port 5434 (Docker)
+python -m app.db.seed               # akun demo pengguna@gmail.com / skinscan123
+./run.sh                            # http://127.0.0.1:8000, Swagger di /docs
+
+pytest                              # tidak butuh Postgres kecuali test_database (di-skip bila mati)
+alembic upgrade head --sql          # cek migrasi tanpa database
+```
+
+## Struktur dan tanggung jawab
+
+```
+app/
+├── main.py            # Buat FastAPI, include_router, openapi_tags, GET /health
+├── dependencies.py    # Dependency FastAPI bersama (get_db; get_current_user nanti di sini)
+├── routers/           # Lapisan HTTP: 1 file per domain
+├── schemas/           # Pydantic: bentuk request dan respons
+├── services/          # Logika bisnis dan query database
+├── models/            # ORM SQLAlchemy; diekspor di models/__init__.py
+├── core/              # config.py (Settings), security.py (hash password, JWT)
+├── db/                # database.py (engine, session, Base), seed.py, migrations/
+└── internal/          # Cadangan untuk endpoint admin; jangan dipakai dulu
+tests/                 # pytest; satu file test per domain
+```
+
+Arah dependensi satu arah: `routers → services → models`. `routers` dan
+`services` boleh memakai `schemas` dan `core`. Jangan sebaliknya.
+
+| Lapisan | Boleh | Dilarang |
+|---|---|---|
+| `routers/` | Parse input lewat schema, panggil service, ubah hasil jadi respons, `raise HTTPException` dengan kode status dan pesan Indonesia | Query SQLAlchemy langsung, logika bisnis, hashing password |
+| `services/` | Terima `db: Session` dan argumen biasa, query, aturan bisnis, kembalikan objek model atau `None` | Import dari `fastapi`, `HTTPException`, objek `Request`, `commit` tanpa alasan jelas |
+| `schemas/` | Validasi dan bentuk JSON; `ConfigDict(from_attributes=True)` untuk respons dari ORM | Field `password_hash` atau rahasia lain di respons |
+| `models/` | Kolom, relasi, indeks | Logika bisnis |
+
+Satu file per domain di tiap lapisan, dengan nama yang sama:
+`routers/auth.py`, `schemas/auth.py`, `services/auth_service.py`, `tests/test_auth.py`.
+
+## Langkah menambah endpoint
+
+Contoh acuan: `POST /auth/login` (`routers/auth.py`, `schemas/auth.py`,
+`services/auth_service.py`, `tests/test_auth.py`).
+
+1. **Tentukan kontrak dulu.** Method, path, field request/respons, dan kode
+   status tiap kondisi. Jika dipakai app mobile, cocokkan nama field dan teks
+   dengan layar terkait di `../mobile/lib/`. Tulis ringkasannya di
+   `docs/api.md` sebelum atau bersamaan dengan kodenya.
+2. **Schema** di `app/schemas/<domain>.py`.
+   - Request: batasi dengan `Field(min_length=..., max_length=...)`; pakai
+     `StrictBool` untuk flag persetujuan agar `"yes"`/`1` tidak lolos.
+   - Respons: model terpisah dari request; jangan sertakan `password_hash`.
+   - Untuk respons error (400, 401, 404, ...) pakai `ErrorResponse` dari `schemas/auth.py`
+     (pindahkan ke modul bersama bila dipakai lebih dari satu domain).
+3. **Model dan migrasi** hanya bila tabel atau kolom berubah.
+   - Tambah model di `app/models/<nama>.py` dan **ekspor di `app/models/__init__.py`**
+     (Alembic membaca model dari sana).
+   - Buat migrasi: `alembic revision --autogenerate -m "deskripsi" --rev-id YYYYMMDD_NNNN`
+     (mengikuti `20260316_0001`). Baca hasilnya sebelum dipakai; jangan percaya
+     autogenerate begitu saja. Jangan mengubah migrasi yang sudah dipakai orang lain.
+   - Pakai tipe generik SQLAlchemy di model (`Uuid`, `DateTime`) agar test
+     SQLite tetap jalan. Tipe khusus Postgres boleh hanya di file migrasi.
+4. **Service** di `app/services/<domain>_service.py`: fungsi biasa dengan
+   `db: Session` sebagai argumen pertama. Kembalikan hasil atau `None`; biarkan
+   router yang memutuskan kode status.
+5. **Router** di `app/routers/<domain>.py`.
+   - `router = APIRouter(prefix="/<domain>", tags=["<domain>"])`.
+   - Handler tipis. Ambil sesi dengan `db: Session = Depends(get_db)` dari `app.dependencies`.
+   - Anotasi tipe return dengan schema respons (itu yang menjadi `response_model`).
+   - Tiap `HTTPException` yang bisa muncul dideklarasikan di `responses={kode: {"model": ErrorResponse, "description": ...}}`
+     agar tampil di Swagger. Beri `summary`. Tulis docstring yang menjelaskan urutan pemeriksaan.
+   - Pesan `detail` untuk pengguna berbahasa Indonesia dan boleh ditampilkan app apa adanya.
+6. **Daftarkan** di `app/main.py`: `app.include_router(<domain>.router)`, lalu
+   tambahkan tag-nya ke `openapi_tags`.
+7. **Endpoint terlindungi** (butuh login). Dependency-nya belum ada; buat sekali, jangan per endpoint:
+   - Tambah `decode_access_token(token)` di `core/security.py` yang memakai
+     `jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])`.
+   - Tambah `get_current_user` di `dependencies.py`: baca `OAuth2PasswordBearer`/header
+     `Authorization: Bearer`, tangkap `jwt.PyJWTError` dan kembalikan `401` dengan
+     header `WWW-Authenticate: Bearer`, ambil user dari `sub`, tolak bila `is_active` false.
+   - Pakai `Depends(get_current_user)` di endpoint, dan deklarasikan respons `401`-nya.
+8. **Test** di `tests/test_<domain>.py` (lihat pola di `tests/test_auth.py`):
+   - SQLite in-memory (`StaticPool`) dan `app.dependency_overrides[get_db]`, bukan Postgres sungguhan.
+   - Uji jalur sukses, tiap kode error, dan validasi input (batas panjang, tipe salah).
+   - Bersihkan override setelah test.
+9. **Dokumentasi**: perbarui `docs/api.md` (tabel endpoint, field, kode status,
+   contoh) dan `README.md` bila langkah setup berubah. Buka `/docs` dan pastikan
+   request, respons, dan error terlihat benar.
+10. **Verifikasi sebelum commit**: `pytest` hijau, `alembic upgrade head --sql`
+    berhasil bila ada migrasi, dan `git status` menunjukkan semua file baru
+    (lihat jebakan `.gitignore` di bawah).
+
+## Aturan penting
+
+- **Rahasia.** Jangan commit `.env`. Jangan log atau kembalikan kata sandi,
+  hash, atau token. `JWT_SECRET_KEY` wajib diisi di luar `APP_ENV=development`.
+- **Kata sandi** lewat `hash_password` / `verify_password` (Argon2) di `core/security.py`.
+  Batas panjang 128 di schema.
+- **Jangan bocorkan akun.** Login mengembalikan satu pesan yang sama untuk email
+  tak terdaftar, kata sandi salah, dan akun nonaktif, dan tetap memverifikasi
+  hash dummy agar waktunya mirip. Pertahankan pola ini di endpoint serupa.
+- **Email disimpan huruf kecil.** Login mencari persis huruf kecil. Setiap kode
+  yang menulis `users.email` harus menurunkan huruf dulu.
+- **Konfigurasi** lewat `Settings` di `core/config.py`, bukan `os.environ` langsung.
+  Tambah variabel baru juga ke `.env.example` dan tabel konfigurasi di `docs/api.md`.
+  `get_settings()` di-cache (`lru_cache`); di test buat `Settings(..., _env_file=None)` langsung.
+- **`DEBUG` bawaan `true`** dan menampilkan traceback penuh di respons `500`.
+  Di server non-lokal set `DEBUG=false`.
+- **Kontrak dengan app mobile.** Teks `detail` untuk `400`/`401` tampil ke pengguna
+  dan nama field dipakai Flutter. Mengubahnya berarti mengubah `../mobile/` juga.
+  `422` memakai format bawaan FastAPI (`detail` berupa list, pesan Inggris) dan tidak boleh ditampilkan langsung.
+- **Jangan melebarkan `.gitignore`.** Aturan `/models/` sengaja diberi `/` di depan.
+  Versi tanpa `/` pernah menyembunyikan `app/models/` dari git dan merusak Alembic
+  untuk semua orang. Setelah menambah folder baru, cek dengan `git status` atau `git check-ignore -v <path>`.
+- **Gaya kode.** Type hint di semua fungsi, `X | None` bukan `Optional[X]`,
+  docstring singkat di fungsi publik, tanpa komentar yang hanya mengulang kode.
+- **Sebelum menganggap selesai**, jalankan `pytest` dan baca hasilnya. Jangan
+  klaim "sudah jalan" untuk hal yang butuh Postgres kalau Postgres tidak dinyalakan.
+
+## Commit
+
+Format: `tipe(lingkup) : deskripsi singkat`, mis. `feat(backend) : add login endpoint`.
+Satu perubahan logis per commit. Jangan menambahkan baris `Co-Authored-By`.

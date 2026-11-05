@@ -36,6 +36,7 @@ bukan untuk klasifikasi lesi.
 | [referensi-data.md](referensi-data.md) | Model data, skala GEA, dan aturan diagnosis |
 | [panduan-instalasi.md](panduan-instalasi.md) | Prasyarat, menjalankan, build, dan troubleshooting |
 | [panduan-pengembangan.md](panduan-pengembangan.md) | Konvensi kode & cara menambah fitur |
+| [api.md](api.md) | Dokumentasi API backend: endpoint, request/respons, kode status, konfigurasi |
 
 ## Ruang Lingkup Prototipe
 
