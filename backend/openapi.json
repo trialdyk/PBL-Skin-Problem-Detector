@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DermaScan Backend",
-    "description": "DermaScan backend API for facial skin-condition analysis. Implemented: health check and email/password login (JWT). Users and items routers are placeholders.",
+    "description": "DermaScan backend API for facial skin-condition analysis. Public: POST /auth/login, POST /auth/register, GET /health. Protected routes require Authorization: Bearer <access_token> (Authorize in Swagger). Users and items are placeholders.",
     "version": "0.1.0"
   },
   "paths": {
@@ -135,8 +135,8 @@
         "tags": [
           "users"
         ],
-        "summary": "Users Status",
-        "description": "Informational endpoint confirming the users router is registered.",
+        "summary": "Confirm the users router is registered",
+        "description": "Informational endpoint confirming the users router is registered.\n\nRequires ``Authorization: Bearer <access_token>`` from login/register.",
         "operationId": "users_status_users_status_get",
         "responses": {
           "200": {
@@ -152,8 +152,23 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing, invalid, expired, or inactive-user bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/items/status": {
@@ -161,8 +176,8 @@
         "tags": [
           "items"
         ],
-        "summary": "Items Status",
-        "description": "Informational endpoint confirming the items router is registered.",
+        "summary": "Confirm the items router is registered",
+        "description": "Informational endpoint confirming the items router is registered.\n\nRequires ``Authorization: Bearer <access_token>`` from login/register.",
         "operationId": "items_status_items_status_get",
         "responses": {
           "200": {
@@ -178,8 +193,23 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing, invalid, expired, or inactive-user bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/health": {
@@ -434,24 +464,30 @@
         ],
         "title": "ValidationError"
       }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
     }
   },
   "tags": [
     {
       "name": "auth",
-      "description": "Login. Issues a bearer JWT; no endpoint verifies it yet."
+      "description": "Public login/register. Issues a bearer JWT used on protected routes."
     },
     {
       "name": "users",
-      "description": "Placeholder status endpoint only."
+      "description": "Protected. Placeholder status endpoint only."
     },
     {
       "name": "items",
-      "description": "Placeholder status endpoint only."
+      "description": "Protected. Placeholder status endpoint only."
     },
     {
       "name": "system",
-      "description": "Service health."
+      "description": "Public service health (no auth)."
     }
   ]
 }

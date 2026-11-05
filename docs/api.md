@@ -37,7 +37,9 @@ Cara menambah endpoint: [backend/AGENTS.md](../backend/AGENTS.md).
 |---|---|
 | Base URL (lokal) | `http://127.0.0.1:8000` |
 | Format | JSON (`Content-Type: application/json`) |
-| Autentikasi | Bearer JWT, **diterbitkan** oleh `/auth/login` dan `/auth/register` tetapi **belum diperiksa** endpoint mana pun |
+| Autentikasi | Bearer JWT dari `/auth/login` atau `/auth/register`. Di Swagger: tombol **Authorize** → isi token. |
+| Publik | `POST /auth/login`, `POST /auth/register`, `GET /health` |
+| Protected | Semua route lain (saat ini `/users/*`, `/items/*`) via `Authorization: Bearer <token>` |
 | Aplikasi mobile | Belum memanggil API ini; login di app masih mock |
 
 Base URL dari aplikasi mobile:
@@ -52,13 +54,17 @@ Base URL dari aplikasi mobile:
 
 Daftar resmi = kunci `paths` di `backend/openapi.json`. Saat export terakhir:
 
-| Method | Path | Catatan |
-|---|---|---|
-| `POST` | `/auth/login` | JWT + user |
-| `POST` | `/auth/register` | Akun baru + JWT |
-| `GET` | `/health` | Tanpa database |
-| `GET` | `/users/status` | Placeholder |
-| `GET` | `/items/status` | Placeholder |
+| Method | Path | Auth | Catatan |
+|---|---|---|---|
+| `POST` | `/auth/login` | Publik | JWT + user |
+| `POST` | `/auth/register` | Publik | Akun baru + JWT |
+| `GET` | `/health` | Publik | Tanpa database |
+| `GET` | `/users/status` | Bearer | Placeholder |
+| `GET` | `/items/status` | Bearer | Placeholder |
+
+Tanpa header / token invalid / user nonaktif → `401` dengan
+`detail`: `Sesi tidak valid atau sudah berakhir. Silakan masuk kembali.`
+dan header `WWW-Authenticate: Bearer`.
 
 Detail field, contoh schema, dan response error: buka `openapi.json` atau `/docs`.
 

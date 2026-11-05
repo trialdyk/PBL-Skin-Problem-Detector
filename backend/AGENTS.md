@@ -27,8 +27,10 @@ sudah ada.
 - Python 3.10+ (disarankan 3.12). Jangan pakai fitur yang baru ada di 3.11+ (mis. `datetime.UTC`).
 - Dipanggil oleh aplikasi Flutter di `../mobile/`. Teks yang tampil ke pengguna
   berbahasa Indonesia; docstring dan komentar kode berbahasa Inggris.
-- Sudah jadi: `GET /health`, `POST /auth/login`, `POST /auth/register`. `users` dan `items` masih placeholder.
-- Belum ada: verifikasi JWT, endpoint terlindungi, verifikasi email, rate limit, CORS.
+- Sudah jadi: `GET /health`, `POST /auth/login`, `POST /auth/register` (**publik**);
+  `GET /users/status`, `GET /items/status` (**protected**, Bearer JWT via `get_current_user`).
+  `users`/`items` masih placeholder bisnis.
+- Belum ada: profil (`/users/me`), verifikasi email, rate limit, CORS.
 
 ## Perintah
 
@@ -54,7 +56,7 @@ alembic upgrade head --sql          # cek migrasi tanpa database
 ```
 app/
 ├── main.py            # Buat FastAPI, include_router, openapi_tags, GET /health
-├── dependencies.py    # Dependency FastAPI bersama (get_db; get_current_user nanti di sini)
+├── dependencies.py    # get_db, get_current_user (Bearer JWT)
 ├── routers/           # Lapisan HTTP: 1 file per domain
 ├── schemas/           # Pydantic: bentuk request dan respons
 ├── services/          # Logika bisnis dan query database
@@ -116,13 +118,13 @@ Contoh acuan: `POST /auth/login` (`routers/auth.py`, `schemas/auth.py`,
    - Pesan `detail` untuk pengguna berbahasa Indonesia dan boleh ditampilkan app apa adanya.
 6. **Daftarkan** di `app/main.py`: `app.include_router(<domain>.router)`, lalu
    tambahkan tag-nya ke `openapi_tags`.
-7. **Endpoint terlindungi** (butuh login). Dependency-nya belum ada; buat sekali, jangan per endpoint:
-   - Tambah `decode_access_token(token)` di `core/security.py` yang memakai
-     `jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])`.
-   - Tambah `get_current_user` di `dependencies.py`: baca `OAuth2PasswordBearer`/header
-     `Authorization: Bearer`, tangkap `jwt.PyJWTError` dan kembalikan `401` dengan
-     header `WWW-Authenticate: Bearer`, ambil user dari `sub`, tolak bila `is_active` false.
-   - Pakai `Depends(get_current_user)` di endpoint, dan deklarasikan respons `401`-nya.
+7. **Endpoint terlindungi** (butuh login). Pakai dependency yang sudah ada; jangan buat ulang:
+   - `decode_access_token` di `core/security.py`, `get_current_user` di `dependencies.py`
+     (`HTTPBearer`, header `Authorization: Bearer`, `401` + `WWW-Authenticate: Bearer`).
+   - Pasang `dependencies=[Depends(get_current_user)]` di `APIRouter` domain, atau
+     `Depends(get_current_user)` di handler bila butuh objek `User`.
+   - Deklarasikan respons `401` dengan `ErrorResponse`. **Jangan** lindungi
+     `/auth/login`, `/auth/register`, atau `/health`.
 8. **Test** di `tests/test_<domain>.py` (lihat pola di `tests/test_auth.py`):
    - SQLite in-memory (`StaticPool`) dan `app.dependency_overrides[get_db]`, bukan Postgres sungguhan.
    - Uji jalur sukses, tiap kode error, dan validasi input (batas panjang, tipe salah).

@@ -334,14 +334,13 @@ backend/
 - Config terpusat (`.env`)
 - Koneksi PostgreSQL + migrasi Alembic
 - Tabel `users`
-- Dependency `get_db`
-- `GET /health` (tidak bergantung DB)
-- `POST /auth/login` dan `POST /auth/register` (JWT, password Argon2)
-- Suite pytest
+- Dependency `get_db` dan `get_current_user` (Bearer JWT)
+- Publik: `GET /health`, `POST /auth/login`, `POST /auth/register`
+- Protected: `GET /users/status`, `GET /items/status` (Authorize di Swagger)
+- Suite pytest + snapshot `openapi.json`
 
 **Belum dikerjakan (deferred)**
 - Profil, refresh token, logout, verifikasi email, lupa kata sandi
-- Verifikasi JWT (dependency `get_current_user`) dan endpoint terlindungi
 - Rate limit login, CORS
 - Tabel analysis / images / results
 - Cloudflare R2, upload gambar, inference ML

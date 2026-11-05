@@ -11,14 +11,24 @@ app = FastAPI(
     title=settings.app_name,
     description=(
         "DermaScan backend API for facial skin-condition analysis. "
-        "Implemented: health check and email/password login (JWT). "
-        "Users and items routers are placeholders."
+        "Public: POST /auth/login, POST /auth/register, GET /health. "
+        "Protected routes require Authorization: Bearer <access_token> "
+        "(Authorize in Swagger). Users and items are placeholders."
     ),
     openapi_tags=[
-        {"name": "auth", "description": "Login. Issues a bearer JWT; no endpoint verifies it yet."},
-        {"name": "users", "description": "Placeholder status endpoint only."},
-        {"name": "items", "description": "Placeholder status endpoint only."},
-        {"name": "system", "description": "Service health."},
+        {
+            "name": "auth",
+            "description": "Public login/register. Issues a bearer JWT used on protected routes.",
+        },
+        {
+            "name": "users",
+            "description": "Protected. Placeholder status endpoint only.",
+        },
+        {
+            "name": "items",
+            "description": "Protected. Placeholder status endpoint only.",
+        },
+        {"name": "system", "description": "Public service health (no auth)."},
     ],
     debug=settings.debug,
 )
