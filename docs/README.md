@@ -37,6 +37,7 @@ bukan untuk klasifikasi lesi.
 | [panduan-instalasi.md](panduan-instalasi.md) | Prasyarat, menjalankan, build, dan troubleshooting |
 | [panduan-pengembangan.md](panduan-pengembangan.md) | Konvensi kode & cara menambah fitur |
 | [api.md](api.md) | Konteks API backend (mobile/env/keamanan); kontrak resmi di [`backend/openapi.json`](../backend/openapi.json) |
+| [fetching_api.md](fetching_api.md) | **AI agent / team reference (EN):** how to fetch the API from mobile (read OpenAPI → `services/`, `auth/` examples) |
 
 ## Ruang Lingkup Prototipe
 
