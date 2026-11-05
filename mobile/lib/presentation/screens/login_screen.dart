@@ -167,7 +167,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Google Sign-In → backend `POST /auth/google`.
   Future<void> _signInWithGoogle(AuthCubit cubit) async {
-    setState(() => _googleLoading = true);
+    setState(() {
+      _googleLoading = true;
+      // Jangan tampilkan bubble email/password kosong saat alur Google.
+      _emailError = null;
+      _passwordError = null;
+      _emailTouched = false;
+      _passwordTouched = false;
+    });
     cubit.togglePrivacy(true);
     cubit.toggleTerms(true);
     await cubit.loginWithGoogle();

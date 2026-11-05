@@ -133,7 +133,11 @@ def login_google(payload: GoogleLoginRequest, db: Session = Depends(get_db)) -> 
 
     try:
         user = auth_service.authenticate_google(db, payload.id_token)
-    except auth_service.GoogleSignInError:
+    except auth_service.GoogleSignInError as exc:
+        # Log the real cause on the server; keep a single user-facing message.
+        import logging
+
+        logging.getLogger(__name__).warning("Google sign-in rejected: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Login Google gagal. Coba lagi atau gunakan email.",

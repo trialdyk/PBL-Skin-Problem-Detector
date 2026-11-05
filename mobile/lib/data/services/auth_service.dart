@@ -146,6 +146,9 @@ class AuthService {
       throw AuthException(fallbackError);
     }
 
+    debugPrint(
+      'Auth API $path → HTTP ${response.statusCode}: ${response.body}',
+    );
     throw AuthException(_readDetail(response.body) ?? fallbackError);
   }
 

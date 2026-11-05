@@ -35,9 +35,12 @@ def verify_google_id_token(token: str) -> dict[str, Any]:
         raise GoogleTokenError("invalid issuer")
     if not claims.get("email"):
         raise GoogleTokenError("email claim missing")
-    if claims.get("email_verified") is not True:
+    # Google may send bool True or the string "true".
+    verified = claims.get("email_verified")
+    if verified is not True and verified != "true":
         raise GoogleTokenError("email not verified")
     if not claims.get("sub"):
         raise GoogleTokenError("sub claim missing")
 
     return claims
+
