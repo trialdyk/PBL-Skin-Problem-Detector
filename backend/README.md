@@ -335,8 +335,9 @@ backend/
 - Koneksi PostgreSQL + migrasi Alembic
 - Tabel `users`
 - Dependency `get_db` dan `get_current_user` (Bearer JWT)
-- Publik: `GET /health`, `POST /auth/login`, `POST /auth/register`
+- Publik: `GET /health`, `POST /auth/login`, `POST /auth/register`, `POST /auth/google`
 - Protected: `GET /users/status`, `GET /items/status` (Authorize di Swagger)
+- Google Sign-In: `GOOGLE_CLIENT_ID` (Web client) di `.env`
 - Suite pytest + snapshot `openapi.json`
 
 **Belum dikerjakan (deferred)**

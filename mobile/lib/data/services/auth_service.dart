@@ -23,18 +23,22 @@ class AuthService {
   @visibleForTesting
   static bool mockGoogleSignIn = false;
 
-  final http.Client _http;
-  final GoogleSignIn _googleSignIn;
+  http.Client? _http;
+  GoogleSignIn? _googleSignIn;
 
   AuthService({
     http.Client? httpClient,
     GoogleSignIn? googleSignIn,
-  })  : _http = httpClient ?? http.Client(),
-        _googleSignIn = googleSignIn ??
-            GoogleSignIn(
-              serverClientId: ApiConfig.googleServerClientId,
-              scopes: const ['email', 'profile'],
-            );
+  })  : _http = httpClient,
+        _googleSignIn = googleSignIn;
+
+  http.Client get _client => _http ??= http.Client();
+
+  GoogleSignIn get _google =>
+      _googleSignIn ??= GoogleSignIn(
+        serverClientId: ApiConfig.googleServerClientId,
+        scopes: const ['email', 'profile'],
+      );
 
   /// [viaGoogle] menandai jalur mock lama (tes / fallback). Prefer
   /// [loginWithGoogle] untuk OAuth sungguhan.
@@ -72,7 +76,7 @@ class AuthService {
       return const UserModel(email: demoEmail, accessToken: 'mock-google-token');
     }
 
-    final account = await _googleSignIn.signIn();
+    final account = await _google.signIn();
     if (account == null) {
       throw AuthException('Login Google dibatalkan.');
     }
@@ -90,7 +94,7 @@ class AuthService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/auth/google');
     late final http.Response response;
     try {
-      response = await _http
+      response = await _client
           .post(
             uri,
             headers: const {'Content-Type': 'application/json'},
@@ -113,9 +117,6 @@ class AuthService {
     }
 
     final detail = _readDetail(response.body);
-    if (response.statusCode == 400 || response.statusCode == 401) {
-      throw AuthException(detail ?? 'Login Google gagal. Coba lagi.');
-    }
     throw AuthException(detail ?? 'Login Google gagal. Coba lagi.');
   }
 

@@ -27,9 +27,10 @@ sudah ada.
 - Python 3.10+ (disarankan 3.12). Jangan pakai fitur yang baru ada di 3.11+ (mis. `datetime.UTC`).
 - Dipanggil oleh aplikasi Flutter di `../mobile/`. Teks yang tampil ke pengguna
   berbahasa Indonesia; docstring dan komentar kode berbahasa Inggris.
-- Sudah jadi: `GET /health`, `POST /auth/login`, `POST /auth/register` (**publik**);
-  `GET /users/status`, `GET /items/status` (**protected**, Bearer JWT via `get_current_user`).
-  `users`/`items` masih placeholder bisnis.
+- Sudah jadi: `GET /health`, `POST /auth/login`, `POST /auth/register`,
+  `POST /auth/google` (**publik**); `GET /users/status`, `GET /items/status`
+  (**protected**, Bearer JWT via `get_current_user`). `users`/`items` masih placeholder bisnis.
+- Google: `GOOGLE_CLIENT_ID` (Web client) di `.env`; Flutter memakai `serverClientId` yang sama.
 - Belum ada: profil (`/users/me`), verifikasi email, rate limit, CORS.
 
 ## Perintah

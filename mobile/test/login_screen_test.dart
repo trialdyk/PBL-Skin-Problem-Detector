@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pbl_skin_problem_detector/data/services/auth_service.dart';
 import 'package:pbl_skin_problem_detector/main.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/login_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
@@ -158,6 +159,14 @@ void _expectReadableScale(
 }
 
 void main() {
+  setUp(() {
+    AuthService.mockGoogleSignIn = true;
+  });
+
+  tearDown(() {
+    AuthService.mockGoogleSignIn = false;
+  });
+
   testWidgets('Email & kata sandi kosong → bubble inline, bukan panel', (
     tester,
   ) async {

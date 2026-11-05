@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/auth_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/auth_state.dart';
-import 'package:pbl_skin_problem_detector/data/services/auth_service.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
@@ -166,16 +165,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Mock Google sign-in (prototipe, belum terhubung ke Google OAuth).
+  /// Google Sign-In → backend `POST /auth/google`.
   Future<void> _signInWithGoogle(AuthCubit cubit) async {
     setState(() => _googleLoading = true);
     cubit.togglePrivacy(true);
     cubit.toggleTerms(true);
-    await cubit.login(
-      email: AuthService.demoEmail,
-      password: 'google-oauth',
-      viaGoogle: true,
-    );
+    await cubit.loginWithGoogle();
     if (mounted) setState(() => _googleLoading = false);
   }
 
