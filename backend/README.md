@@ -262,13 +262,19 @@ curl http://127.0.0.1:8000/users/status
 curl http://127.0.0.1:8000/items/status
 ```
 
-### Login
+### Login dan daftar
 
-`POST /auth/login` menerima `email`, `password`, `accepted_terms`, dan `accepted_privacy`,
-lalu mengembalikan JWT dan data user. Akun demo dibuat dengan `python -m app.db.seed`.
+`POST /auth/login` dan `POST /auth/register` mengembalikan JWT dan data user.
+Akun demo dibuat dengan `python -m app.db.seed`.
 
 ```bash
-curl -X POST http://127.0.0.1:8000/auth/login   -H "Content-Type: application/json"   -d '{"email":"pengguna@gmail.com","password":"skinscan123","accepted_terms":true,"accepted_privacy":true}'
+curl -X POST http://127.0.0.1:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"pengguna@gmail.com","password":"skinscan123","accepted_terms":true,"accepted_privacy":true}'
+
+curl -X POST http://127.0.0.1:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"full_name":"Budi Santoso","email":"budi@gmail.com","password":"rahasia123","accepted_terms":true,"accepted_privacy":true}'
 ```
 
 Dokumentasi lengkap (field, kode status, format error, konfigurasi, catatan keamanan):
@@ -327,11 +333,11 @@ backend/
 - Tabel `users`
 - Dependency `get_db`
 - `GET /health` (tidak bergantung DB)
-- `POST /auth/login` (JWT, password Argon2)
+- `POST /auth/login` dan `POST /auth/register` (JWT, password Argon2)
 - Suite pytest
 
 **Belum dikerjakan (deferred)**
-- Register, profil, refresh token, logout
+- Profil, refresh token, logout, verifikasi email, lupa kata sandi
 - Verifikasi JWT (dependency `get_current_user`) dan endpoint terlindungi
 - Rate limit login, CORS
 - Tabel analysis / images / results

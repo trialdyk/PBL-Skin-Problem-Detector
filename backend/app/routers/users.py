@@ -1,7 +1,7 @@
 """User-related API routes.
 
 Endpoints in this module only verify router registration for PBL-04.
-Business features (registration, profile) are deferred; login lives in ``auth.py``.
+Business features (profile) are deferred; login and registration live in ``auth.py``.
 """
 
 from fastapi import APIRouter

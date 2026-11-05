@@ -32,12 +32,13 @@ Base URL dari aplikasi mobile:
 | Method | Path | Fungsi | Status |
 |---|---|---|---|
 | `POST` | `/auth/login` | Login email + kata sandi, mengembalikan JWT | Siap |
+| `POST` | `/auth/register` | Buat akun baru, langsung mengembalikan JWT | Siap |
 | `GET` | `/health` | Cek layanan hidup (tanpa database) | Siap |
 | `GET` | `/users/status` | Penanda router terdaftar | Placeholder |
 | `GET` | `/items/status` | Penanda router terdaftar | Placeholder |
 
-Belum ada: registrasi, profil (`/users/me`), refresh token, logout, login Google,
-riwayat diagnosa, dan endpoint inferensi model.
+Belum ada: profil (`/users/me`), refresh token, logout, verifikasi email, lupa
+kata sandi, login Google, riwayat diagnosa, dan endpoint inferensi model.
 
 ---
 
@@ -183,6 +184,86 @@ Langkah menambah endpoint terlindungi ada di
 
 ---
 
+## `POST /auth/register`
+
+Membuat akun lalu langsung masuk: respons sama dengan login (token + user), jadi
+app tidak perlu memanggil `/auth/login` lagi.
+
+> Aplikasi mobile belum punya layar daftar; tautan "Daftar Sekarang" di layar
+> login masih menampilkan toast "belum tersedia". Field di bawah mengikuti tabel
+> `users` dan pola login, bukan layar yang sudah ada. Sesuaikan jika desain
+> layar daftar berbeda.
+
+### Request body
+
+| Field | Tipe | Wajib | Aturan |
+|---|---|---|---|
+| `full_name` | string | tidak | Nama tampilan. Dipangkas spasi, 1 sampai 255 karakter. Jika tidak dikirim, tersimpan `null`. String kosong atau hanya spasi ditolak (`422`). |
+| `email` | string | ya | Aturan sama dengan login: dipangkas, diubah ke huruf kecil, maks 255 karakter, format `nama@domain.tld`. |
+| `password` | string | ya | **8 sampai 128 karakter.** Tidak dipangkas. |
+| `accepted_terms` | boolean | ya | Boolean sungguhan dan harus `true`. |
+| `accepted_privacy` | boolean | ya | Boolean sungguhan dan harus `true`. |
+
+Konfirmasi kata sandi (dua kali ketik) cukup dicek di sisi app; server tidak
+menerimanya.
+
+```json
+{
+  "full_name": "Budi Santoso",
+  "email": "budi@gmail.com",
+  "password": "rahasia123",
+  "accepted_terms": true,
+  "accepted_privacy": true
+}
+```
+
+### Respons `201 Created`
+
+Bentuknya sama dengan respons login (`access_token`, `token_type`,
+`expires_in`, `user`), dengan `user.email` dalam huruf kecil dan `user.full_name`
+sesuai input (atau `null`).
+
+### Kode status
+
+Urutan pemeriksaan: validasi bentuk body (`422`) → persetujuan (`400`) →
+email sudah dipakai (`409`).
+
+| Status | Kapan | Bentuk `detail` |
+|---|---|---|
+| `201` | Akun dibuat | (lihat di atas) |
+| `400` | `accepted_terms` atau `accepted_privacy` bernilai `false` | string |
+| `409` | Email sudah punya akun (tidak peduli huruf besar/kecil atau spasi di tepi) | string |
+| `422` | Body tidak valid: kata sandi < 8 atau > 128 karakter, email salah format, nama kosong/terlalu panjang, tipe salah, field wajib hilang, atau bukan JSON | **list** |
+
+Pesan `400` sama dengan login. Pesan `409` siap ditampilkan:
+
+```json
+{ "detail": "Email sudah terdaftar. Silakan masuk." }
+```
+
+`422` berformat sama seperti di login dan tidak boleh ditampilkan langsung.
+
+### Contoh `curl`
+
+```bash
+curl -X POST http://127.0.0.1:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"full_name":"Budi Santoso","email":"budi@gmail.com","password":"rahasia123","accepted_terms":true,"accepted_privacy":true}'
+```
+
+### Catatan
+
+- Dua permintaan bersamaan dengan email yang sama: tepat satu yang `201`, sisanya
+  `409`. Penentunya indeks unik `users.email` di database, bukan pemeriksaan di kode.
+- `409` memberi tahu bahwa email sudah terdaftar. Itu tak terhindarkan pada
+  pendaftaran; login sengaja memakai satu pesan umum agar tidak ikut membocorkan.
+- Kata sandi disimpan sebagai hash Argon2. Akun baru langsung aktif; belum ada
+  verifikasi email.
+- Aturan kata sandi (min 8) hanya berlaku saat daftar. Login tetap menerima
+  1 sampai 128 karakter agar akun lama (mis. akun demo) tetap bisa masuk.
+
+---
+
 ## `GET /health`
 
 Tidak menyentuh database, jadi tetap `200` walaupun Postgres mati.
@@ -235,9 +316,10 @@ menganggap `500` sebagai "login gagal, coba lagi" dan tidak mem-parse body-nya.
 |---|---|
 | `DEBUG` bawaan `true` | Di server non-lokal wajib `DEBUG=false`, kalau tidak traceback bocor di respons `500`. |
 | Validasi `422` memantulkan `input` | Kata sandi yang dikirim bisa ikut terpantul di body `422` (mis. kata sandi > 128 karakter atau field lain hilang). Hindari mencatat body respons `422` di log. |
-| Tanpa pembatasan percobaan | Belum ada rate limit atau penguncian akun; login bisa dicoba berulang. |
+| Tanpa pembatasan percobaan | Belum ada rate limit atau penguncian akun; login bisa dicoba berulang, dan `/auth/register` bisa dipakai membuat akun tanpa batas serta menebak email yang terdaftar lewat `409`. |
+| Tanpa verifikasi email | Akun baru langsung aktif dan mendapat token, dengan email apa pun yang formatnya valid. |
 | Tanpa CORS | Panggilan dari browser (mis. Flutter web) lain origin akan diblokir; `OPTIONS /auth/login` menghasilkan `405`. Aplikasi mobile tidak terpengaruh. |
 | Hanya HTTP lokal | `uvicorn` tidak memakai TLS. Di produksi pasang di belakang HTTPS. |
 | `/docs` terbuka | Swagger tersedia tanpa autentikasi. |
-| Email harus huruf kecil di database | Login mencari `email` persis dalam huruf kecil. Kode registrasi di masa depan wajib menyimpan email huruf kecil, atau akun tidak akan bisa login. |
+| Email harus huruf kecil di database | Login mencari `email` persis dalam huruf kecil. `/auth/register` sudah menyimpan huruf kecil; akun yang dibuat lewat jalur lain (SQL manual, seed baru) harus melakukan hal yang sama. |
 | Tanpa refresh token / logout | Token berlaku sampai `exp`; logout di app hanya menghapus token di sisi klien. |

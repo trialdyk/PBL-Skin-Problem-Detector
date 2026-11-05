@@ -16,6 +16,11 @@ Email = Annotated[
     ),
 ]
 
+FullName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=255),
+]
+
 
 class LoginRequest(BaseModel):
     """Fields of the mobile login form."""
@@ -40,8 +45,36 @@ class LoginRequest(BaseModel):
     accepted_privacy: StrictBool = Field(description="Kebijakan Privasi checkbox.")
 
 
+class RegisterRequest(BaseModel):
+    """Fields for creating an account."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "full_name": "Budi Santoso",
+                    "email": "budi@gmail.com",
+                    "password": "rahasia123",
+                    "accepted_terms": True,
+                    "accepted_privacy": True,
+                }
+            ]
+        }
+    )
+
+    full_name: FullName | None = Field(
+        default=None,
+        description="Optional display name. Trimmed; null when omitted.",
+    )
+    email: Email = Field(description="Trimmed and lowercased by the server.")
+    # Looser upper bound than the hash needs; Argon2 accepts long inputs.
+    password: str = Field(min_length=8, max_length=128)
+    accepted_terms: StrictBool = Field(description="Syarat & Ketentuan, must be true.")
+    accepted_privacy: StrictBool = Field(description="Kebijakan Privasi, must be true.")
+
+
 class ErrorResponse(BaseModel):
-    """Body of 400 and 401 responses. ``detail`` is user-facing Indonesian text."""
+    """Body of 400, 401 and 409 responses. ``detail`` is user-facing Indonesian text."""
 
     detail: str
 
@@ -56,8 +89,8 @@ class UserResponse(BaseModel):
     full_name: str | None
 
 
-class LoginResponse(BaseModel):
-    """Bearer token plus the authenticated user."""
+class AuthResponse(BaseModel):
+    """Bearer token plus the authenticated user (login and register)."""
 
     access_token: str
     token_type: str = "bearer"

@@ -10,8 +10,8 @@ sudah ada. Referensi API yang berlaku: [docs/api.md](../docs/api.md).
 - Python 3.10+ (disarankan 3.12). Jangan pakai fitur yang baru ada di 3.11+ (mis. `datetime.UTC`).
 - Dipanggil oleh aplikasi Flutter di `../mobile/`. Teks yang tampil ke pengguna
   berbahasa Indonesia; docstring dan komentar kode berbahasa Inggris.
-- Sudah jadi: `GET /health`, `POST /auth/login`. `users` dan `items` masih placeholder.
-- Belum ada: verifikasi JWT, endpoint terlindungi, registrasi, rate limit, CORS.
+- Sudah jadi: `GET /health`, `POST /auth/login`, `POST /auth/register`. `users` dan `items` masih placeholder.
+- Belum ada: verifikasi JWT, endpoint terlindungi, verifikasi email, rate limit, CORS.
 
 ## Perintah
 
@@ -53,7 +53,7 @@ Arah dependensi satu arah: `routers → services → models`. `routers` dan
 | Lapisan | Boleh | Dilarang |
 |---|---|---|
 | `routers/` | Parse input lewat schema, panggil service, ubah hasil jadi respons, `raise HTTPException` dengan kode status dan pesan Indonesia | Query SQLAlchemy langsung, logika bisnis, hashing password |
-| `services/` | Terima `db: Session` dan argumen biasa, query, aturan bisnis, kembalikan objek model atau `None` | Import dari `fastapi`, `HTTPException`, objek `Request`, `commit` tanpa alasan jelas |
+| `services/` | Terima `db: Session` dan argumen biasa, query, aturan bisnis, kembalikan objek model atau `None`; untuk kegagalan yang perlu dibedakan, `raise` exception domain buatan sendiri (mis. `EmailAlreadyRegisteredError`) | Import dari `fastapi`, `HTTPException`, objek `Request`, `commit` tanpa alasan jelas |
 | `schemas/` | Validasi dan bentuk JSON; `ConfigDict(from_attributes=True)` untuk respons dari ORM | Field `password_hash` atau rahasia lain di respons |
 | `models/` | Kolom, relasi, indeks | Logika bisnis |
 
@@ -84,8 +84,10 @@ Contoh acuan: `POST /auth/login` (`routers/auth.py`, `schemas/auth.py`,
    - Pakai tipe generik SQLAlchemy di model (`Uuid`, `DateTime`) agar test
      SQLite tetap jalan. Tipe khusus Postgres boleh hanya di file migrasi.
 4. **Service** di `app/services/<domain>_service.py`: fungsi biasa dengan
-   `db: Session` sebagai argumen pertama. Kembalikan hasil atau `None`; biarkan
-   router yang memutuskan kode status.
+   `db: Session` sebagai argumen pertama. Kembalikan hasil atau `None`, atau
+   `raise` exception domain; biarkan router yang memutuskan kode status. Untuk
+   aturan keunikan, andalkan indeks unik database dan tangkap `IntegrityError`
+   (lihat `register`), bukan pemeriksaan "cek dulu baru insert" yang bisa kalah balapan.
 5. **Router** di `app/routers/<domain>.py`.
    - `router = APIRouter(prefix="/<domain>", tags=["<domain>"])`.
    - Handler tipis. Ambil sesi dengan `db: Session = Depends(get_db)` dari `app.dependencies`.
@@ -123,7 +125,10 @@ Contoh acuan: `POST /auth/login` (`routers/auth.py`, `schemas/auth.py`,
   tak terdaftar, kata sandi salah, dan akun nonaktif, dan tetap memverifikasi
   hash dummy agar waktunya mirip. Pertahankan pola ini di endpoint serupa.
 - **Email disimpan huruf kecil.** Login mencari persis huruf kecil. Setiap kode
-  yang menulis `users.email` harus menurunkan huruf dulu.
+  yang menulis `users.email` harus menurunkan huruf dulu; lewat schema `Email`
+  (`schemas/auth.py`) hal itu otomatis, jadi pakai tipe itu untuk field email baru.
+- **Kata sandi saat daftar minimal 8 karakter, saat login 1 sampai 128.** Jangan
+  samakan keduanya, atau akun lama dengan kata sandi pendek tidak bisa masuk.
 - **Konfigurasi** lewat `Settings` di `core/config.py`, bukan `os.environ` langsung.
   Tambah variabel baru juga ke `.env.example` dan tabel konfigurasi di `docs/api.md`.
   `get_settings()` di-cache (`lru_cache`); di test buat `Settings(..., _env_file=None)` langsung.
