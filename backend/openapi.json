@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DermaScan Backend",
-    "description": "DermaScan backend API for facial skin-condition analysis. Public: POST /auth/login, POST /auth/register, GET /health. Protected routes require Authorization: Bearer <access_token> (Authorize in Swagger). Users and items are placeholders.",
+    "description": "DermaScan backend API for facial skin-condition analysis. Public: POST /auth/login, POST /auth/register, POST /auth/google, GET /health. Protected routes require Authorization: Bearer <access_token> (Authorize in Swagger). Users and items are placeholders.",
     "version": "0.1.0"
   },
   "paths": {
@@ -109,6 +109,68 @@
           },
           "409": {
             "description": "The email already has an account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/google": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login or register with a Google ID token",
+        "description": "Exchange a Google ``id_token`` for a DermaScan bearer JWT.\n\nPublic endpoint (no Authorization header). The mobile app must obtain the\ntoken with ``serverClientId`` set to the same Web client as ``GOOGLE_CLIENT_ID``.\nConsent is checked before token verification.",
+        "operationId": "login_google_auth_google_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Syarat & Ketentuan or Kebijakan Privasi not accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid Google ID token or inactive account.",
             "content": {
               "application/json": {
                 "schema": {
@@ -282,6 +344,42 @@
         ],
         "title": "ErrorResponse",
         "description": "Body of 400, 401 and 409 responses. ``detail`` is user-facing Indonesian text."
+      },
+      "GoogleLoginRequest": {
+        "properties": {
+          "id_token": {
+            "type": "string",
+            "maxLength": 8192,
+            "minLength": 20,
+            "title": "Id Token",
+            "description": "Google ID token."
+          },
+          "accepted_terms": {
+            "type": "boolean",
+            "title": "Accepted Terms",
+            "description": "Syarat & Ketentuan checkbox."
+          },
+          "accepted_privacy": {
+            "type": "boolean",
+            "title": "Accepted Privacy",
+            "description": "Kebijakan Privasi checkbox."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_token",
+          "accepted_terms",
+          "accepted_privacy"
+        ],
+        "title": "GoogleLoginRequest",
+        "description": "Google Sign-In payload from the mobile app (``id_token`` + consent).",
+        "examples": [
+          {
+            "accepted_privacy": true,
+            "accepted_terms": true,
+            "id_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        ]
       },
       "HTTPValidationError": {
         "properties": {
@@ -475,7 +573,7 @@
   "tags": [
     {
       "name": "auth",
-      "description": "Public login/register. Issues a bearer JWT used on protected routes."
+      "description": "Public login/register/Google. Issues a bearer JWT used on protected routes."
     },
     {
       "name": "users",

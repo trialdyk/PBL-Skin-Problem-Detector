@@ -26,6 +26,12 @@ class AuthRepository {
     return user;
   }
 
+  Future<UserModel> loginWithGoogle({required bool acceptedTerms}) async {
+    final user = await _service.loginWithGoogle(acceptedTerms: acceptedTerms);
+    _currentUser = user;
+    return user;
+  }
+
   void logout() {
     _currentUser = null;
   }

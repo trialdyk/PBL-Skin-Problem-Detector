@@ -73,6 +73,26 @@ class RegisterRequest(BaseModel):
     accepted_privacy: StrictBool = Field(description="Kebijakan Privasi, must be true.")
 
 
+class GoogleLoginRequest(BaseModel):
+    """Google Sign-In payload from the mobile app (``id_token`` + consent)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "id_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "accepted_terms": True,
+                    "accepted_privacy": True,
+                }
+            ]
+        }
+    )
+
+    id_token: str = Field(min_length=20, max_length=8192, description="Google ID token.")
+    accepted_terms: StrictBool = Field(description="Syarat & Ketentuan checkbox.")
+    accepted_privacy: StrictBool = Field(description="Kebijakan Privasi checkbox.")
+
+
 class ErrorResponse(BaseModel):
     """Body of 400, 401 and 409 responses. ``detail`` is user-facing Indonesian text."""
 

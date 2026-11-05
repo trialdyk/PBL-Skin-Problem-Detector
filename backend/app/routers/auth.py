@@ -10,6 +10,7 @@ from app.models import User
 from app.schemas.auth import (
     AuthResponse,
     ErrorResponse,
+    GoogleLoginRequest,
     LoginRequest,
     RegisterRequest,
     UserResponse,
@@ -102,6 +103,41 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email sudah terdaftar. Silakan masuk.",
+        ) from None
+
+    return _auth_response(user)
+
+
+@router.post(
+    "/google",
+    summary="Login or register with a Google ID token",
+    responses={
+        400: {
+            "model": ErrorResponse,
+            "description": "Syarat & Ketentuan or Kebijakan Privasi not accepted.",
+        },
+        401: {
+            "model": ErrorResponse,
+            "description": "Invalid Google ID token or inactive account.",
+        },
+    },
+)
+def login_google(payload: GoogleLoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
+    """Exchange a Google ``id_token`` for a DermaScan bearer JWT.
+
+    Public endpoint (no Authorization header). The mobile app must obtain the
+    token with ``serverClientId`` set to the same Web client as ``GOOGLE_CLIENT_ID``.
+    Consent is checked before token verification.
+    """
+    _require_consent(payload.accepted_terms, payload.accepted_privacy)
+
+    try:
+        user = auth_service.authenticate_google(db, payload.id_token)
+    except auth_service.GoogleSignInError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Login Google gagal. Coba lagi atau gunakan email.",
+            headers={"WWW-Authenticate": "Bearer"},
         ) from None
 
     return _auth_response(user)

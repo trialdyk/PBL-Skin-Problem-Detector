@@ -38,7 +38,7 @@ Cara menambah endpoint: [backend/AGENTS.md](../backend/AGENTS.md).
 | Base URL (lokal) | `http://127.0.0.1:8000` |
 | Format | JSON (`Content-Type: application/json`) |
 | Autentikasi | Bearer JWT dari `/auth/login` atau `/auth/register`. Di Swagger: tombol **Authorize** → isi token. |
-| Publik | `POST /auth/login`, `POST /auth/register`, `GET /health` |
+| Publik | `POST /auth/login`, `POST /auth/register`, `POST /auth/google`, `GET /health` |
 | Protected | Semua route lain (saat ini `/users/*`, `/items/*`) via `Authorization: Bearer <token>` |
 | Aplikasi mobile | Belum memanggil API ini; login di app masih mock |
 
@@ -58,6 +58,7 @@ Daftar resmi = kunci `paths` di `backend/openapi.json`. Saat export terakhir:
 |---|---|---|---|
 | `POST` | `/auth/login` | Publik | JWT + user |
 | `POST` | `/auth/register` | Publik | Akun baru + JWT |
+| `POST` | `/auth/google` | Publik | Tukar Google `id_token` → JWT |
 | `GET` | `/health` | Publik | Tanpa database |
 | `GET` | `/users/status` | Bearer | Placeholder |
 | `GET` | `/items/status` | Bearer | Placeholder |
@@ -102,6 +103,7 @@ Ini tidak muncul di OpenAPI.
 | `JWT_SECRET_KEY` | nilai dev tetap | Wajib diganti di luar development. Pakai ≥ 32 byte acak. |
 | `JWT_ALGORITHM` | `HS256` | |
 | `JWT_EXPIRE_MINUTES` | `1440` | Masa berlaku token; menentukan `expires_in`. |
+| `GOOGLE_CLIENT_ID` | kosong | Web OAuth Client ID; wajib untuk `POST /auth/google`. |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL_MODE` | `localhost`, `5434`, `postgres`, kosong, `dermascan`, `disable` | Koneksi PostgreSQL. |
 
 ## Respons 500

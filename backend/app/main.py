@@ -11,14 +11,16 @@ app = FastAPI(
     title=settings.app_name,
     description=(
         "DermaScan backend API for facial skin-condition analysis. "
-        "Public: POST /auth/login, POST /auth/register, GET /health. "
+        "Public: POST /auth/login, POST /auth/register, POST /auth/google, GET /health. "
         "Protected routes require Authorization: Bearer <access_token> "
         "(Authorize in Swagger). Users and items are placeholders."
     ),
     openapi_tags=[
         {
             "name": "auth",
-            "description": "Public login/register. Issues a bearer JWT used on protected routes.",
+            "description": (
+                "Public login/register/Google. Issues a bearer JWT used on protected routes."
+            ),
         },
         {
             "name": "users",
