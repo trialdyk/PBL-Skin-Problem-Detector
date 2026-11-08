@@ -10,7 +10,7 @@ import 'package:pbl_skin_problem_detector/data/services/auth/auth_exception.dart
 
 /// Google Sign-In → `id_token` → `POST /auth/google` — public (no Bearer).
 class AuthGoogle {
-  AuthGoogle(this._api, {GoogleSignIn? this._googleSignIn});
+  AuthGoogle(this._api, {this._googleSignIn});
 
   final ApiClient _api;
   GoogleSignIn? _googleSignIn;
