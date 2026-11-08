@@ -37,15 +37,18 @@ Cara menambah endpoint: [backend/AGENTS.md](../backend/AGENTS.md).
 |---|---|
 | Base URL (lokal) | `http://127.0.0.1:8000` |
 | Format | JSON (`Content-Type: application/json`) |
-| Autentikasi | Bearer JWT dari `/auth/login` atau `/auth/register`. Di Swagger: tombol **Authorize** → isi token. |
+| Autentikasi | Bearer JWT dari `/auth/login`, `/auth/register`, atau `/auth/google`. Di Swagger: tombol **Authorize** → isi token. |
 | Publik | `POST /auth/login`, `POST /auth/register`, `POST /auth/google`, `GET /health` |
 | Protected | Semua route lain (saat ini `/users/*`, `/items/*`) via `Authorization: Bearer <token>` |
-| Aplikasi mobile | Belum memanggil API ini; login di app masih mock |
+| Aplikasi mobile | **Sudah** memanggil API lewat `mobile/lib/data/services/auth/` (`POST /auth/login`, `/auth/register`, `/auth/google`); Bearer token otomatis pada request `auth: true` |
 
-Base URL dari aplikasi mobile:
+Base URL aplikasi mobile (dibaca dari `mobile/lib/core/api_config.dart`, bukan
+hard-code di layar):
 
-| Klien | Base URL |
+| Item | Nilai |
 |---|---|
+| Bawaan (produksi) | `https://pbl.trialdyk.my.id` |
+| Override | `flutter run --dart-define=API_BASE_URL=...` |
 | Emulator Android | `http://10.0.2.2:8000` |
 | iOS Simulator | `http://127.0.0.1:8000` |
 | Perangkat fisik | `http://<IP-laptop>:8000`, jalankan server dengan `--host 0.0.0.0` (`run.sh` hanya mengikat `127.0.0.1`) |
@@ -70,20 +73,35 @@ dan header `WWW-Authenticate: Bearer`.
 Detail field, contoh schema, dan response error: buka `openapi.json` atau `/docs`.
 
 Belum ada: profil (`/users/me`), refresh token, logout, verifikasi email, lupa
-kata sandi, login Google, riwayat diagnosa, dan endpoint inferensi model.
+kata sandi, riwayat diagnosa, dan endpoint inferensi model.
 
 ## Mapping ke aplikasi mobile
 
-Kolom login mengikuti alur di
-`mobile/lib/presentation/screens/login_screen.dart` dan `AuthService.login`.
+Implementasi ada di `mobile/lib/data/services/auth/` (satu file per endpoint):
 
-| Field OpenAPI (`LoginRequest`) | Asal di app |
+| Endpoint | File Flutter | Dipakai layar |
+|---|---|---|
+| `POST /auth/login` | `auth/auth_login.dart` | `LoginScreen` (email + kata sandi) |
+| `POST /auth/google` | `auth/auth_google.dart` | `LoginScreen` (tombol Google) |
+| `POST /auth/register` | `auth/auth_register.dart` | **belum ada layarnya** |
+
+Field yang dikirim (schema: `LoginRequest` / `RegisterRequest` /
+`GoogleLoginRequest`):
+
+| Field OpenAPI | Asal di app |
 |---|---|
-| `email` | Kolom "Email" |
+| `email` | Kolom "Email" (`trim()` di klien; server men-*lowercase*) |
 | `password` | Kolom "Kata Sandi" |
-| `accepted_terms` / `accepted_privacy` | App mengirim `true` otomatis (teks S&K di UI, bukan checkbox terpisah) |
+| `full_name` | Hanya register; belum ada input di UI |
+| `accepted_terms` / `accepted_privacy` | Selalu `true` — `LoginScreen` menyalakan kedua centang sebelum submit (teks S&K di UI, bukan checkbox terpisah) |
+| `id_token` | Hanya `/auth/google`, dari `GoogleSignIn` dengan `serverClientId` = Web client ID |
 
 Checkbox "Ingat saya" hanya state lokal dan **tidak** dikirim ke API.
+
+`access_token` dari respons disimpan di `ApiClient` dan dipakai otomatis saat
+memanggil endpoint dengan `auth: true` (contoh: `GET /users/status` lewat
+`services/scan/`). Token tidak di-persist, jadi restart aplikasi berarti login
+ulang.
 
 Pesan `detail` string pada `400`/`401`/`409` berbahasa Indonesia dan boleh
 ditampilkan app apa adanya. Respons `422` memakai format bawaan FastAPI

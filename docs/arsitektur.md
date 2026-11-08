@@ -106,13 +106,13 @@ flowchart LR
     A["Akses route"] --> B{"Login?"}
     B -- "Tidak" --> C{"Route publik?"}
     C -- "Ya" --> D["Izinkan"]
-    C -- "Tidak" --> E["→ /welcome"]
+    C -- "Tidak" --> E["→ /splash"]
     B -- "Ya" --> F{"Route publik?"}
     F -- "Ya" --> G["→ /home"]
     F -- "Tidak" --> D
 ```
 
-- **Route publik:** `/splash`, `/welcome`, `/login`.
+- **Route publik:** `/splash`, `/welcome`, `/login`, `/terms`, `/privacy`.
 - Router mendengarkan perubahan auth via `_AuthRefresh` (sebuah
   `ChangeNotifier` yang men-subscribe stream `AuthCubit`), sehingga login/logout
   otomatis memicu evaluasi ulang redirect.
@@ -162,9 +162,21 @@ sequenceDiagram
   - `AuthRepository`: menyimpan `_currentUser`, meneruskan login ke `AuthService`.
   - `ScanRepository`: menyimpan `_session` (`ScanSession`), mengatur foto,
     interview, dan memanggil diagnosa.
-- **Service** = logika murni / akses platform, tanpa menyimpan state aplikasi.
-  - `AuthService` — validasi login mock.
-  - `GeaDiagnosisService` — hitung grade GEA (rule-based).
+- **Service** = logika murni, akses platform, atau akses jaringan — tanpa
+  menyimpan state aplikasi.
+  - `api_client.dart` — satu `http.Client` bersama; menambahkan header
+    `Authorization: Bearer <token>` saat dipanggil dengan `auth: true`. Base URL
+    berasal dari `core/api_config.dart`.
+  - `auth/` — satu file per endpoint: `auth_login.dart` (`POST /auth/login`),
+    `auth_register.dart` (`POST /auth/register`), `auth_google.dart`
+    (`GoogleSignIn` → `POST /auth/google`). `auth_service.dart` adalah facade
+    yang menyimpan token hasil login ke `ApiClient`; `auth_exception.dart`
+    memuat `AuthException`.
+  - `scan/` — contoh domain endpoint **protected** (`GET /users/status`) dan
+    referensi pola `auth: true`. Belum dipanggil layar mana pun; lihat
+    [fetching_api.md](fetching_api.md) §6.
+  - `GeaDiagnosisService` — hitung grade GEA (rule-based, **bukan** analisis
+    citra).
   - `FaceScanAnalyzer` — ML Kit: cahaya, keberadaan wajah, sudut.
   - `ImagePickService` — ambil gambar dari kamera/galeri.
 
