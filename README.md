@@ -13,7 +13,17 @@ Monorepo aplikasi pendeteksi tingkat keparahan jerawat berdasarkan skala **GEA (
 
 ## Model
 
-`custom_cnn_1.tflite` ada di `machine-learning/models/` (ikut di-commit, untuk di-embed ke back-end/mobile):
+Model yang **dipakai backend** sekarang adalah CNN Fadillah Dama:
+
+- `machine-learning/Fadillah-Dama/deep_learning/dermascan_custom_cnn.tflite`
+  (sumber training) → disalin ke `backend/app/ml/artifacts/` dan di-commit.
+- Input `[1, 160, 160, 3]` float32 piksel 0–255, output softmax 5 kelas
+  `IGA0`–`IGA4` → grade GEA 0–4.
+- Dipanggil aplikasi lewat `POST /ml/predict` (lihat
+  [docs/api.md](docs/api.md) dan [backend/README.md](backend/README.md)).
+
+Model lama `custom_cnn_1.tflite` di `machine-learning/models/` tetap disimpan
+sebagai pembanding, tetapi tidak dipakai alur produk:
 
 https://github.com/trialdyk/PBL-Skin-Problem-Detector/blob/main/machine-learning/models/custom_cnn_1.tflite
 

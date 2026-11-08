@@ -69,6 +69,16 @@ Prompt terminal biasanya berubah menjadi `(.venv)`.
 pip install -r requirements.txt
 ```
 
+Untuk `POST /ml/predict` (dan test ML) butuh paket inferensi tambahan:
+
+```bash
+pip install -r requirements-ml.txt
+```
+
+Isinya `ai-edge-litert` (runtime TFLite ringan ± 21 MB), `numpy`, dan
+`pillow`. TensorFlow **tidak** diperlukan — `ml_service` hanya memakainya
+sebagai fallback bila `ai_edge_litert` tidak tersedia.
+
 ### 4. Siapkan file environment
 
 **Windows (PowerShell):**
@@ -294,12 +304,13 @@ backend/
 ├── app/
 │   ├── main.py              # Entry FastAPI + GET /health
 │   ├── dependencies.py      # Depends (get_db)
-│   ├── routers/             # Router API publik (auth, users, items)
+│   ├── routers/             # Router API publik (auth, users, items, ml)
 │   ├── internal/            # Modul internal/admin (reserved)
 │   ├── core/                # Config, hashing password, JWT
+│   ├── ml/artifacts/        # Model TFLite + labels + meta (di-commit)
 │   ├── models/              # Model ORM (User)
 │   ├── schemas/             # Schema Pydantic request/response
-│   ├── services/            # Business logic
+│   ├── services/            # Business logic (+ ml_service.py)
 │   └── db/
 │       ├── database.py      # Engine, session, Base
 │       ├── seed.py          # Akun demo (python -m app.db.seed)
@@ -309,6 +320,7 @@ backend/
 ├── .env                     # Lokal saja (jangan commit)
 ├── .env.example             # Template env untuk tim
 ├── requirements.txt
+├── requirements-ml.txt      # Runtime inferensi (ai-edge-litert, numpy, pillow)
 ├── run.sh
 └── README.md
 ```
@@ -319,11 +331,40 @@ backend/
 | `app/core/config.py` | Settings dari environment / `.env` |
 | `app/db/database.py` | Engine SQLAlchemy + session |
 | `app/db/migrations/` | Migrasi Alembic |
+| `app/ml/artifacts/` | `dermascan_custom_cnn.tflite`, `labels`, `meta.json` |
 | `app/models/` | Model ORM (`User` sudah ada) |
 | `app/routers/` | Endpoint HTTP |
 | `app/schemas/` | Bentuk request/respons (Pydantic) |
-| `app/services/` | Logika bisnis (tanpa HTTP) |
+| `app/services/` | Logika bisnis (tanpa HTTP), termasuk `ml_service.py` |
 | `tests/` | Automated tests |
+
+---
+
+## Model ML (inferensi)
+
+`POST /ml/predict` menjalankan CNN Fadillah Dama untuk memprediksi keparahan
+jerawat dari 1–3 foto wajah.
+
+| Hal | Nilai |
+|---|---|
+| Model | `app/ml/artifacts/dermascan_custom_cnn.tflite` (421 KB, di-commit) |
+| Asal | `machine-learning/Fadillah-Dama/deep_learning/` |
+| Input | `[1, 160, 160, 3]` float32, piksel **0–255** (normalisasi di dalam model) |
+| Output | softmax 5 kelas `IGA0`–`IGA4` → GEA 0–4 (GEA 5 tak pernah muncul) |
+| Runtime | `ai_edge_litert.interpreter`, fallback `tensorflow.lite` |
+| Kode | `app/services/ml_service.py`, `app/routers/ml.py`, `app/schemas/ml.py` |
+| Test | `tests/test_ml.py` (unit + endpoint; dilewati bila runtime tidak ada) |
+
+Catatan penting:
+
+- Jangan pre-scale piksel ke 0–1 — model sudah punya `Rescaling(1./255)`.
+- Interpreter TFLite tidak thread-safe; akses dibungkus `threading.Lock`.
+- Model **tidak** boleh ditaruh di `backend/models/` — `.gitignore` mengabaikan
+  folder itu. Simpan di `app/ml/artifacts/`.
+- Regenerate kontrak setelah mengubah router/schema:
+  `python scripts/export_openapi.py`.
+- `backend/tests/test_ml.py::test_predictions_are_stable_for_a_fixed_photo`
+  mengunci hasil untuk gambar tetap; kalau angka bergeser, preprocessing berubah.
 
 ---
 
@@ -336,7 +377,9 @@ backend/
 - Tabel `users`
 - Dependency `get_db` dan `get_current_user` (Bearer JWT)
 - Publik: `GET /health`, `POST /auth/login`, `POST /auth/register`, `POST /auth/google`
-- Protected: `GET /users/status`, `GET /items/status` (Authorize di Swagger)
+- Protected: `GET /users/status`, `GET /items/status`, `POST /ml/predict`
+  (Authorize di Swagger)
+- Inferensi CNN TFLite: 1–3 foto → grade GEA (mean softmax), tanpa menyimpan foto
 - Google Sign-In: `GOOGLE_CLIENT_ID` (Web client) di `.env`
 - Suite pytest + snapshot `openapi.json`
 
@@ -344,7 +387,7 @@ backend/
 - Profil, refresh token, logout, verifikasi email, lupa kata sandi
 - Rate limit login, CORS
 - Tabel analysis / images / results
-- Cloudflare R2, upload gambar, inference ML
+- Cloudflare R2, upload gambar, penyimpanan riwayat diagnosa
 - Deploy production
 
 ## Troubleshooting singkat
@@ -355,6 +398,8 @@ backend/
 | `database "dermascan" does not exist` | Jalankan `CREATE DATABASE dermascan;` |
 | `password authentication failed` | Samakan `DB_PASSWORD` di `.env` dengan password container |
 | `ModuleNotFoundError` | Aktifkan `.venv` lalu `pip install -r requirements.txt` |
+| `/ml/predict` → `503` | `pip install -r requirements-ml.txt` (runtime inferensi belum ada) |
+| Test ML di-skip | Runtime TFLite atau file model tidak ada di `app/ml/artifacts/` |
 | PowerShell: script disabled | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 
 ## Next task yang disarankan

@@ -1,0 +1,30 @@
+{
+  "model": "dermascan_custom_cnn",
+  "author": "Fadillah Dama",
+  "source": "machine-learning/Fadillah-Dama/deep_learning/dermascan_custom_cnn.tflite",
+  "weights": "machine-learning/Fadillah-Dama/deep_learning/dermascan_custom_cnn_best.keras",
+  "notebook": "machine-learning/Fadillah-Dama/deep_learning/model.ipynb",
+  "dataset": "ACNE04 (Hugging Face, Layered-Labs/ACNE04)",
+  "input": {
+    "shape": [1, 160, 160, 3],
+    "dtype": "float32",
+    "values": "raw RGB pixels 0-255; the model starts with layers.Rescaling(1./255)"
+  },
+  "output": {
+    "shape": [1, 5],
+    "activation": "softmax",
+    "class_names": ["IGA0", "IGA1", "IGA2", "IGA3", "IGA4"]
+  },
+  "gea_mapping": {
+    "IGA0": 0,
+    "IGA1": 1,
+    "IGA2": 2,
+    "IGA3": 3,
+    "IGA4": 4
+  },
+  "notes": [
+    "GEA grade 5 (very severe) has no model class and is never predicted.",
+    "Keras vs TFLite parity verified in the notebook: max abs difference 1.19e-07.",
+    "Do not pre-scale pixels in the API: Rescaling already lives inside the model."
+  ]
+}

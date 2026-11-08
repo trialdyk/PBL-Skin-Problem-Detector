@@ -48,24 +48,23 @@ Aturan yang menyertainya:
   tidak mengikuti skala IGA. Petakan ke IGA lebih dulu, baru ke GEA, dan
   validasi pemetaannya bersama tim ML — jangan langsung menempelkan ke grade.
 
-Bentuk yang direncanakan di kode (satu sumber kebenaran, dipakai saat inferensi
-disambungkan):
+Pemetaan ini sekarang **dipakai kode**: `backend/app/services/ml_service.py`
+menyimpan `IGA_TO_GEA = (0, 1, 2, 3, 4)` (argmax → grade GEA) dan aplikasi
+memakai `GeaResult.fromGrade(prediction.grade, source: ResultSource.ml)`.
 
-```dart
-/// Pemetaan resmi output model (IGA0–IGA4) → grade GEA.
-/// Urutan list = urutan kelas output model; jangan diurutkan ulang.
-abstract final class IgaGrade {
-  static const List<String> labels = ['IGA0', 'IGA1', 'IGA2', 'IGA3', 'IGA4'];
-  static const List<int> geaGrades = [0, 1, 2, 3, 4];
-
-  static GeaResult fromIgaIndex(int index) =>
-      GeaResult.fromGrade(geaGrades[index.clamp(0, geaGrades.length - 1)]);
-}
+```python
+# backend/app/services/ml_service.py
+IGA_LABELS = ("IGA0", "IGA1", "IGA2", "IGA3", "IGA4")  # urutan output model
+IGA_TO_GEA = (0, 1, 2, 3, 4)                          # GEA 5 tidak pernah muncul
 ```
 
-Pemetaan ini **belum dipakai kode mana pun**: hasil diagnosa aplikasi masih
-rule-based dari interview (lihat "Aturan Diagnosa" di bawah), dan tidak ada
-endpoint inferensi di backend.
+Artifact yang dipakai: `backend/app/ml/artifacts/dermascan_custom_cnn.tflite`
+(salinan dari `machine-learning/Fadillah-Dama/deep_learning/`), dengan
+`dermascan_custom_cnn_meta.json` sebagai catatan asal-usul dan kontrak
+input/output. Endpoint: `POST /ml/predict` (lihat [api.md](api.md)).
+
+Kalau inferensi gagal (offline/`503`), hasil jatuh ke aturan interview di
+"Aturan Diagnosa" dan ditandai `ResultSource.ruleBased`.
 
 ### Warna grade
 
@@ -95,6 +94,7 @@ mengambil detail dari `GeaScale`.
 | `labelId` | `String` | Label bahasa Indonesia |
 | `labelEn` | `String` | Label bahasa Inggris |
 | `description` | `String` | Penjelasan grade |
+| `source` | `ResultSource` | `ml` bila dari CNN, `ruleBased` bila dari interview (bawaan) |
 
 Getter: `badgeTitle` → `"GEA <grade>"`, `badgeSubtitle` →
 `"TINGKAT <LABEL_ID>"`.
@@ -131,6 +131,8 @@ Satu sesi pemeriksaan (in-memory).
 
 - `hasAllPhotos` → `true` bila ketiga path terisi.
 - `pathFor(SelfieAngle)` → path sesuai sudut.
+- `photoPaths` → daftar path yang sudah ada, urut depan → kiri → kanan; dipakai
+  sebagai berkas `POST /ml/predict` (1–3 foto).
 - `copyWith(..., clearPhotos: true, clearResult: true)` untuk mengosongkan.
 
 Enum `SelfieAngle`: `front`, `left`, `right`.
@@ -149,10 +151,32 @@ Hasil parsing respons autentikasi (`AuthResponse`): `access_token` + `user`.
 `json['user']['email']` / `json['user']['full_name']`. Token **tidak** disimpan
 ke storage permanen — menutup aplikasi berarti harus login ulang.
 
+## Inferensi CNN (sumber utama grade)
+
+`ScanRepository.diagnose()` mengirim foto sesi ke `POST /ml/predict`; backend
+menjalankan `dermascan_custom_cnn.tflite` (lihat `backend/app/services/ml_service.py`).
+
+| Tahap | Aturan |
+|---|---|
+| Input model | `[1, 160, 160, 3]` float32, RGB, **piksel 0–255** |
+| Normalisasi | Di dalam model (`layers.Rescaling(1./255)`) — API tidak membagi 255 |
+| Resize | `Image.BILINEAR` ke 160×160 (setara `image_size=(160,160)` saat training) |
+| Orientasi | EXIF di-*transpose* dulu (`ImageOps.exif_transpose`) |
+| Output | softmax 5 kelas, urut `IGA0`…`IGA4` |
+| Agregasi | `mean` probabilitas semua foto → `argmax` → `IGA_TO_GEA` → grade GEA |
+| Grade 5 | Tidak mungkin dari model (hanya 5 kelas) |
+| Kegagalan | `MlException` → fallback "Aturan Diagnosa" + `ResultSource.ruleBased` |
+
+Kontrak input/output tercatat di
+`backend/app/ml/artifacts/dermascan_custom_cnn_meta.json`. Regresi preprocessing
+dikunci oleh `backend/tests/test_ml.py::test_predictions_are_stable_for_a_fixed_photo`
+(nilai softmax untuk gambar tetap harus tidak berubah).
+
 ## Aturan Diagnosa (rule-based)
 
 `GeaDiagnosisService.diagnose()` mensimulasikan delay **700 ms**, lalu menghitung
-skor. Ini **bukan** analisis citra.
+skor. Ini **bukan** analisis citra; sekarang berperan sebagai **fallback** bila
+`POST /ml/predict` gagal (offline, `4xx`, `503`) atau belum ada foto.
 
 ```mermaid
 flowchart TD

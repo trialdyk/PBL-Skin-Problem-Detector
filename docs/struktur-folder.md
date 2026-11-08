@@ -15,6 +15,7 @@ PBL-Skin-Problem-Detector/
 │   │   │   ├── repositories/         # Pemilik state sesi & orkestrasi
 │   │   │   └── services/             # Logika murni / akses platform / HTTP
 │   │   │       ├── auth/             # 1 file ≈ 1 endpoint auth
+│   │   │       ├── ml/               # 1 file ≈ 1 endpoint ML (prediksi CNN)
 │   │   │       └── scan/             # Contoh endpoint protected
 │   │   └── presentation/
 │   │       ├── screens/              # Layar (halaman)
@@ -58,7 +59,8 @@ terhadap folder tersebut.
 | File | Isi |
 |---|---|
 | `gea_scale.dart` | `GeaScale` (tabel grade 0–5) + `GeaGradeInfo` |
-| `gea_result.dart` | `GeaResult` — hasil akhir (grade, label ID/EN, deskripsi) |
+| `gea_result.dart` | `GeaResult` — hasil akhir (grade, label ID/EN, deskripsi, `source`) |
+| `result_source.dart` | `ResultSource` — asal hasil: `ml` (CNN) atau `ruleBased` (interview) |
 | `interview_answers.dart` | `InterviewAnswers` + enum `GenderOption`, `SkinTypeOption` |
 | `scan_session.dart` | `ScanSession` (3 path foto, interview, hasil) + enum `SelfieAngle` |
 | `user_model.dart` | `UserModel` — `email`, `fullName`, `accessToken` + `fromAuthJson` |
@@ -69,7 +71,7 @@ terhadap folder tersebut.
 | File | Isi |
 |---|---|
 | `auth_repository.dart` | Menyimpan `_currentUser`, meneruskan ke `AuthService`, membuka `api` (token Bearer) |
-| `scan_repository.dart` | Menyimpan `_session`, mengatur foto/interview, memanggil diagnosa |
+| `scan_repository.dart` | Menyimpan `_session`, mengatur foto/interview, diagnosa CNN → fallback rule-based |
 
 ## `lib/data/services/`
 
@@ -103,6 +105,17 @@ Contoh domain endpoint **protected**; belum dipanggil layar mana pun.
 | `scan.dart` | Barrel export domain scan |
 | `scan_service.dart` | Facade `ScanService` |
 | `scan_status.dart` | `GET /users/status` dengan `auth: true` |
+
+### `lib/data/services/ml/`
+
+Domain inferensi; dipanggil `ScanRepository` saat diagnosa.
+
+| File | Isi |
+|---|---|
+| `ml.dart` | Barrel export domain ML |
+| `ml_predict.dart` | `POST /ml/predict` (multipart 1–3 foto) + interface `MlPredictor` |
+| `ml_prediction.dart` | `MlPrediction` — grade GEA, `top_label`, model, probabilitas |
+| `ml_exception.dart` | `MlException` (untuk log; repo langsung fallback) |
 
 ## `lib/presentation/screens/`
 
@@ -152,6 +165,8 @@ Contoh domain endpoint **protected**; belum dipanggil layar mana pun.
 |---|---|
 | `widget_test.dart` | Splash → login lewat tombol Mulai; welcome bebas overflow di 6 ukuran layar |
 | `login_screen_test.dart` | Tata letak login, panel/bubble galat, skala teks & kontras |
+| `ml_predict_test.dart` | `MlPredict`: multipart + Bearer, parsing grade, error 503/jaringan/body rusak |
+| `scan_repository_test.dart` | CNN dipakai saat sukses; fallback rule-based saat gagal/tanpa foto |
 
 ## `tools/`
 

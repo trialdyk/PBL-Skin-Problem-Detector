@@ -12,4 +12,5 @@ PyJWT==2.10.1
 argon2-cffi==23.1.0
 google-auth==2.40.3
 requests==2.32.4
+python-multipart==0.0.32
 
