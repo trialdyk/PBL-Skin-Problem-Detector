@@ -7,16 +7,21 @@ import 'package:pbl_skin_problem_detector/business/cubit/scan_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
 import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
 import 'package:pbl_skin_problem_detector/data/services/face_scan_analyzer.dart';
+import 'package:pbl_skin_problem_detector/presentation/audio/app_sound_player.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/selfie_angle_progress.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class ScanCaptureScreen extends StatefulWidget {
-  const ScanCaptureScreen({super.key, this.angle});
+  const ScanCaptureScreen({super.key, this.angle, this.soundPlayer});
 
   /// Bila diisi, layar hanya mengambil satu sudut lalu kembali ke hub Foto.
   final SelfieAngle? angle;
+
+  /// Bunyi tick countdown & rana. Bila null, layar memakai [AssetSoundPlayer];
+  /// test bisa menyuntikkan player palsu.
+  final AppSoundPlayer? soundPlayer;
 
   @override
   State<ScanCaptureScreen> createState() => _ScanCaptureScreenState();
@@ -26,6 +31,7 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
   CameraController? _controller;
   final _analyzer = FaceScanAnalyzer();
   final _tts = FlutterTts();
+  late final AppSoundPlayer _soundPlayer;
 
   String? _error;
   String? _voiceError;
@@ -47,6 +53,8 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
   @override
   void initState() {
     super.initState();
+    _soundPlayer = widget.soundPlayer ?? AssetSoundPlayer();
+    unawaited(_soundPlayer.prepare());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final cubit = context.read<ScanCubit>();
@@ -178,6 +186,7 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
     if (_countdownTimer != null || _capturing) return;
 
     setState(() => _countdown = 3);
+    unawaited(_soundPlayer.playTick());
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
@@ -198,6 +207,7 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
         _capturePhoto();
       } else {
         setState(() => _countdown = next);
+        unawaited(_soundPlayer.playTick());
       }
     });
   }
@@ -211,6 +221,7 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
     setState(() => _capturing = true);
     try {
       await _stopStream();
+      unawaited(_soundPlayer.playShutter());
       final file = await controller.takePicture();
       if (!mounted) return;
 
@@ -284,6 +295,7 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
     }
     _analyzer.dispose();
     unawaited(_tts.stop());
+    unawaited(_soundPlayer.dispose());
     super.dispose();
   }
 
