@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/auth_state.dart';
 import 'package:pbl_skin_problem_detector/data/repositories/auth_repository.dart';
-import 'package:pbl_skin_problem_detector/data/services/auth_service.dart';
+import 'package:pbl_skin_problem_detector/data/services/auth/auth.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   AuthCubit(this._repository) : super(const AuthState());
@@ -44,6 +44,25 @@ class AuthCubit extends Cubit<AuthState> {
         state.copyWith(
           status: AuthStatus.failure,
           errorMessage: 'Login gagal. Coba lagi.',
+        ),
+      );
+    }
+  }
+
+  Future<void> loginWithGoogle() async {
+    emit(state.copyWith(status: AuthStatus.loading, clearError: true));
+    try {
+      final user = await _repository.loginWithGoogle(
+        acceptedTerms: state.canSubmit,
+      );
+      emit(state.copyWith(status: AuthStatus.authenticated, user: user));
+    } on AuthException catch (e) {
+      emit(state.copyWith(status: AuthStatus.failure, errorMessage: e.message));
+    } catch (_) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.failure,
+          errorMessage: 'Login Google gagal. Coba lagi.',
         ),
       );
     }

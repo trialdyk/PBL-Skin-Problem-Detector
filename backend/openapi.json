@@ -1,0 +1,591 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DermaScan Backend",
+    "description": "DermaScan backend API for facial skin-condition analysis. Public: POST /auth/login, POST /auth/register, POST /auth/google, GET /health. Protected routes require Authorization: Bearer <access_token> (Authorize in Swagger). Users and items are placeholders.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login with email and password",
+        "description": "Log in with email and password.\n\nThe 400 and 401 ``detail`` strings are Indonesian and shown as-is by the app.\nThe consent check runs before the credential check, so unaccepted terms\nreturn 400 even when the password is wrong. 422 means the body is malformed\nand its ``detail`` is a list, not a string.",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Syarat & Ketentuan or Kebijakan Privasi not accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wrong email or password, or the account is inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create an account",
+        "description": "Create an account and log it in, returning the same body as login.\n\nCheck order: 422 (malformed body) before 400 (consent not accepted) before\n409 (email taken). A 409 reveals that the email is registered; that is\ninherent to sign-up and is why login uses a single generic message instead.",
+        "operationId": "register_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Syarat & Ketentuan or Kebijakan Privasi not accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The email already has an account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/google": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login or register with a Google ID token",
+        "description": "Exchange a Google ``id_token`` for a DermaScan bearer JWT.\n\nPublic endpoint (no Authorization header). The mobile app must obtain the\ntoken with ``serverClientId`` set to the same Web client as ``GOOGLE_CLIENT_ID``.\nConsent is checked before token verification.",
+        "operationId": "login_google_auth_google_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Syarat & Ketentuan or Kebijakan Privasi not accepted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid Google ID token or inactive account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/status": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Confirm the users router is registered",
+        "description": "Informational endpoint confirming the users router is registered.\n\nRequires ``Authorization: Bearer <access_token>`` from login/register.",
+        "operationId": "users_status_users_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Users Status Users Status Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired, or inactive-user bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/items/status": {
+      "get": {
+        "tags": [
+          "items"
+        ],
+        "summary": "Confirm the items router is registered",
+        "description": "Informational endpoint confirming the items router is registered.\n\nRequires ``Authorization: Bearer <access_token>`` from login/register.",
+        "operationId": "items_status_items_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Items Status Items Status Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired, or inactive-user bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health",
+        "description": "Lightweight health check independent of external services.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in",
+          "user"
+        ],
+        "title": "AuthResponse",
+        "description": "Bearer token plus the authenticated user (login and register)."
+      },
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorResponse",
+        "description": "Body of 400, 401 and 409 responses. ``detail`` is user-facing Indonesian text."
+      },
+      "GoogleLoginRequest": {
+        "properties": {
+          "id_token": {
+            "type": "string",
+            "maxLength": 8192,
+            "minLength": 20,
+            "title": "Id Token",
+            "description": "Google ID token."
+          },
+          "accepted_terms": {
+            "type": "boolean",
+            "title": "Accepted Terms",
+            "description": "Syarat & Ketentuan checkbox."
+          },
+          "accepted_privacy": {
+            "type": "boolean",
+            "title": "Accepted Privacy",
+            "description": "Kebijakan Privasi checkbox."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_token",
+          "accepted_terms",
+          "accepted_privacy"
+        ],
+        "title": "GoogleLoginRequest",
+        "description": "Google Sign-In payload from the mobile app (``id_token`` + consent).",
+        "examples": [
+          {
+            "accepted_privacy": true,
+            "accepted_terms": true,
+            "id_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        ]
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[A-Za-z0-9_.+-]+@[A-Za-z0-9_-]+\\.[A-Za-z0-9_.-]+$",
+            "title": "Email",
+            "description": "Trimmed and lowercased by the server."
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password"
+          },
+          "accepted_terms": {
+            "type": "boolean",
+            "title": "Accepted Terms",
+            "description": "Syarat & Ketentuan checkbox."
+          },
+          "accepted_privacy": {
+            "type": "boolean",
+            "title": "Accepted Privacy",
+            "description": "Kebijakan Privasi checkbox."
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "accepted_terms",
+          "accepted_privacy"
+        ],
+        "title": "LoginRequest",
+        "description": "Fields of the mobile login form.",
+        "examples": [
+          {
+            "accepted_privacy": true,
+            "accepted_terms": true,
+            "email": "pengguna@gmail.com",
+            "password": "skinscan123"
+          }
+        ]
+      },
+      "RegisterRequest": {
+        "properties": {
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name",
+            "description": "Optional display name. Trimmed; null when omitted."
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[A-Za-z0-9_.+-]+@[A-Za-z0-9_-]+\\.[A-Za-z0-9_.-]+$",
+            "title": "Email",
+            "description": "Trimmed and lowercased by the server."
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          },
+          "accepted_terms": {
+            "type": "boolean",
+            "title": "Accepted Terms",
+            "description": "Syarat & Ketentuan, must be true."
+          },
+          "accepted_privacy": {
+            "type": "boolean",
+            "title": "Accepted Privacy",
+            "description": "Kebijakan Privasi, must be true."
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "accepted_terms",
+          "accepted_privacy"
+        ],
+        "title": "RegisterRequest",
+        "description": "Fields for creating an account.",
+        "examples": [
+          {
+            "accepted_privacy": true,
+            "accepted_terms": true,
+            "email": "budi@gmail.com",
+            "full_name": "Budi Santoso",
+            "password": "rahasia123"
+          }
+        ]
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "full_name"
+        ],
+        "title": "UserResponse",
+        "description": "Public user data; never includes the password hash."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "auth",
+      "description": "Public login/register/Google. Issues a bearer JWT used on protected routes."
+    },
+    {
+      "name": "users",
+      "description": "Protected. Placeholder status endpoint only."
+    },
+    {
+      "name": "items",
+      "description": "Protected. Placeholder status endpoint only."
+    },
+    {
+      "name": "system",
+      "description": "Public service health (no auth)."
+    }
+  ]
+}

@@ -2,7 +2,24 @@
 
 Panduan untuk developer dan AI agent yang mengubah kode di folder `backend/`.
 Ikuti struktur dan langkah di sini supaya endpoint baru konsisten dengan yang
-sudah ada. Referensi API yang berlaku: [docs/api.md](../docs/api.md).
+sudah ada.
+
+## Sumber kebenaran dokumentasi API
+
+| Prioritas | File / URL | Isi |
+|---|---|---|
+| **1 (kontrak)** | [`openapi.json`](openapi.json) | Path, method, schema request/response, status code, tag |
+| **2 (UI)** | `/docs`, `/openapi.json` live | Sama dengan snapshot; harus sinkron |
+| **3 (konteks)** | [`docs/api.md`](../docs/api.md) | Base URL mobile, mapping Flutter, env, catatan keamanan — **bukan** salinan field dari kode |
+
+**Wajib untuk agent:**
+
+- Baca / tulis kontrak API lewat `openapi.json` (atau regenerate lalu baca file itu).
+- **Jangan** menyusun dokumentasi endpoint dengan menebak dari `routers/` / `schemas/` lalu menempelkannya ke markdown tanpa export OpenAPI.
+- Setiap perubahan router, schema, `response_model`, `responses={...}`, `summary`, docstring operasi, atau `openapi_tags` di `main.py` **harus** diikuti:
+  1. `python scripts/export_openapi.py`
+  2. Sesuaikan `docs/api.md` hanya untuk konteks non-OpenAPI (mobile, keamanan, env) bila perlu
+  3. `pytest tests/test_openapi.py` (atau `pytest` penuh) — test gagal jika snapshot stale
 
 ## Ringkasan
 
@@ -10,8 +27,11 @@ sudah ada. Referensi API yang berlaku: [docs/api.md](../docs/api.md).
 - Python 3.10+ (disarankan 3.12). Jangan pakai fitur yang baru ada di 3.11+ (mis. `datetime.UTC`).
 - Dipanggil oleh aplikasi Flutter di `../mobile/`. Teks yang tampil ke pengguna
   berbahasa Indonesia; docstring dan komentar kode berbahasa Inggris.
-- Sudah jadi: `GET /health`, `POST /auth/login`, `POST /auth/register`. `users` dan `items` masih placeholder.
-- Belum ada: verifikasi JWT, endpoint terlindungi, verifikasi email, rate limit, CORS.
+- Sudah jadi: `GET /health`, `POST /auth/login`, `POST /auth/register`,
+  `POST /auth/google` (**publik**); `GET /users/status`, `GET /items/status`
+  (**protected**, Bearer JWT via `get_current_user`). `users`/`items` masih placeholder bisnis.
+- Google: `GOOGLE_CLIENT_ID` (Web client) di `.env`; Flutter memakai `serverClientId` yang sama.
+- Belum ada: profil (`/users/me`), verifikasi email, rate limit, CORS.
 
 ## Perintah
 
@@ -27,7 +47,8 @@ alembic upgrade head                # butuh Postgres di port 5434 (Docker)
 python -m app.db.seed               # akun demo pengguna@gmail.com / skinscan123
 ./run.sh                            # http://127.0.0.1:8000, Swagger di /docs
 
-pytest                              # tidak butuh Postgres kecuali test_database (di-skip bila mati)
+python scripts/export_openapi.py    # tulis ulang openapi.json dari app.openapi()
+pytest                              # termasuk tests/test_openapi.py (snapshot harus cocok)
 alembic upgrade head --sql          # cek migrasi tanpa database
 ```
 
@@ -36,7 +57,7 @@ alembic upgrade head --sql          # cek migrasi tanpa database
 ```
 app/
 ├── main.py            # Buat FastAPI, include_router, openapi_tags, GET /health
-├── dependencies.py    # Dependency FastAPI bersama (get_db; get_current_user nanti di sini)
+├── dependencies.py    # get_db, get_current_user (Bearer JWT)
 ├── routers/           # Lapisan HTTP: 1 file per domain
 ├── schemas/           # Pydantic: bentuk request dan respons
 ├── services/          # Logika bisnis dan query database
@@ -67,8 +88,9 @@ Contoh acuan: `POST /auth/login` (`routers/auth.py`, `schemas/auth.py`,
 
 1. **Tentukan kontrak dulu.** Method, path, field request/respons, dan kode
    status tiap kondisi. Jika dipakai app mobile, cocokkan nama field dan teks
-   dengan layar terkait di `../mobile/lib/`. Tulis ringkasannya di
-   `docs/api.md` sebelum atau bersamaan dengan kodenya.
+   dengan layar terkait di `../mobile/lib/`. **Jangan** menulis tabel field ke
+   `docs/api.md` sebagai sumber kontrak — kontrak akan muncul di OpenAPI setelah
+   schema/router siap dan di-export.
 2. **Schema** di `app/schemas/<domain>.py`.
    - Request: batasi dengan `Field(min_length=..., max_length=...)`; pakai
      `StrictBool` untuk flag persetujuan agar `"yes"`/`1` tidak lolos.
@@ -93,26 +115,31 @@ Contoh acuan: `POST /auth/login` (`routers/auth.py`, `schemas/auth.py`,
    - Handler tipis. Ambil sesi dengan `db: Session = Depends(get_db)` dari `app.dependencies`.
    - Anotasi tipe return dengan schema respons (itu yang menjadi `response_model`).
    - Tiap `HTTPException` yang bisa muncul dideklarasikan di `responses={kode: {"model": ErrorResponse, "description": ...}}`
-     agar tampil di Swagger. Beri `summary`. Tulis docstring yang menjelaskan urutan pemeriksaan.
+     agar masuk ke OpenAPI/Swagger. Beri `summary`. Tulis docstring yang menjelaskan urutan pemeriksaan.
    - Pesan `detail` untuk pengguna berbahasa Indonesia dan boleh ditampilkan app apa adanya.
 6. **Daftarkan** di `app/main.py`: `app.include_router(<domain>.router)`, lalu
    tambahkan tag-nya ke `openapi_tags`.
-7. **Endpoint terlindungi** (butuh login). Dependency-nya belum ada; buat sekali, jangan per endpoint:
-   - Tambah `decode_access_token(token)` di `core/security.py` yang memakai
-     `jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])`.
-   - Tambah `get_current_user` di `dependencies.py`: baca `OAuth2PasswordBearer`/header
-     `Authorization: Bearer`, tangkap `jwt.PyJWTError` dan kembalikan `401` dengan
-     header `WWW-Authenticate: Bearer`, ambil user dari `sub`, tolak bila `is_active` false.
-   - Pakai `Depends(get_current_user)` di endpoint, dan deklarasikan respons `401`-nya.
+7. **Endpoint terlindungi** (butuh login). Pakai dependency yang sudah ada; jangan buat ulang:
+   - `decode_access_token` di `core/security.py`, `get_current_user` di `dependencies.py`
+     (`HTTPBearer`, header `Authorization: Bearer`, `401` + `WWW-Authenticate: Bearer`).
+   - Pasang `dependencies=[Depends(get_current_user)]` di `APIRouter` domain, atau
+     `Depends(get_current_user)` di handler bila butuh objek `User`.
+   - Deklarasikan respons `401` dengan `ErrorResponse`. **Jangan** lindungi
+     `/auth/login`, `/auth/register`, atau `/health`.
 8. **Test** di `tests/test_<domain>.py` (lihat pola di `tests/test_auth.py`):
    - SQLite in-memory (`StaticPool`) dan `app.dependency_overrides[get_db]`, bukan Postgres sungguhan.
    - Uji jalur sukses, tiap kode error, dan validasi input (batas panjang, tipe salah).
    - Bersihkan override setelah test.
-9. **Dokumentasi**: perbarui `docs/api.md` (tabel endpoint, field, kode status,
-   contoh) dan `README.md` bila langkah setup berubah. Buka `/docs` dan pastikan
-   request, respons, dan error terlihat benar.
-10. **Verifikasi sebelum commit**: `pytest` hijau, `alembic upgrade head --sql`
-    berhasil bila ada migrasi, dan `git status` menunjukkan semua file baru
+9. **Dokumentasi dari Swagger (wajib, jangan dilewati).**
+   - Jalankan `python scripts/export_openapi.py` → memperbarui `openapi.json`.
+   - Commit `openapi.json` bersama perubahan kode.
+   - Perbarui `docs/api.md` **hanya** untuk konteks di luar OpenAPI (mapping mobile,
+     env baru, catatan keamanan). Jangan menyalin ulang seluruh schema ke markdown.
+   - Perbarui `README.md` bila langkah setup berubah.
+   - Opsional: buka `/docs` untuk cek visual; sumber yang di-commit tetap `openapi.json`.
+10. **Verifikasi sebelum commit**: `pytest` hijau (termasuk `tests/test_openapi.py`),
+    `alembic upgrade head --sql` berhasil bila ada migrasi, dan `git status`
+    menunjukkan `openapi.json` ikut berubah bila kontrak API berubah
     (lihat jebakan `.gitignore` di bawah).
 
 ## Aturan penting
@@ -130,13 +157,19 @@ Contoh acuan: `POST /auth/login` (`routers/auth.py`, `schemas/auth.py`,
 - **Kata sandi saat daftar minimal 8 karakter, saat login 1 sampai 128.** Jangan
   samakan keduanya, atau akun lama dengan kata sandi pendek tidak bisa masuk.
 - **Konfigurasi** lewat `Settings` di `core/config.py`, bukan `os.environ` langsung.
-  Tambah variabel baru juga ke `.env.example` dan tabel konfigurasi di `docs/api.md`.
-  `get_settings()` di-cache (`lru_cache`); di test buat `Settings(..., _env_file=None)` langsung.
+  Tambah variabel baru juga ke `.env.example` dan tabel konfigurasi di `docs/api.md`
+  (env tidak masuk OpenAPI). `get_settings()` di-cache (`lru_cache`); di test buat
+  `Settings(..., _env_file=None)` langsung.
+- **OpenAPI stale = bug.** Jangan commit perubahan API tanpa `openapi.json` baru.
+  Jangan edit `openapi.json` manual; selalu lewat `scripts/export_openapi.py`.
 - **`DEBUG` bawaan `true`** dan menampilkan traceback penuh di respons `500`.
   Di server non-lokal set `DEBUG=false`.
 - **Kontrak dengan app mobile.** Teks `detail` untuk `400`/`401` tampil ke pengguna
   dan nama field dipakai Flutter. Mengubahnya berarti mengubah `../mobile/` juga.
   `422` memakai format bawaan FastAPI (`detail` berupa list, pesan Inggris) dan tidak boleh ditampilkan langsung.
+- **Google Sign-In.** `GOOGLE_CLIENT_ID` = Web client ID. Flutter `serverClientId`
+  harus sama. Migrasi `20261105_0002` menambah `auth_provider` / `google_sub` dan
+  membuat `password_hash` nullable. Setelah pull: `alembic upgrade head`.
 - **Jangan melebarkan `.gitignore`.** Aturan `/models/` sengaja diberi `/` di depan.
   Versi tanpa `/` pernah menyembunyikan `app/models/` dari git dan merusak Alembic
   untuk semua orang. Setelah menambah folder baru, cek dengan `git status` atau `git check-ignore -v <path>`.

@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
 
+    # Web OAuth client ID (audience for Google ID tokens from the mobile app).
+    google_client_id: str = ""
+
     @model_validator(mode="after")
     def _require_jwt_secret_outside_development(self) -> "Settings":
         if self.app_env != "development" and self.jwt_secret_key == _DEV_JWT_SECRET:

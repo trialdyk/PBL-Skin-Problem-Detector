@@ -8,7 +8,7 @@ flowchart TD
     Splash --> Welcome["/welcome — WelcomeScreen"]
     Welcome -->|"Mulai Sekarang"| Login["/login — LoginScreen"]
     Login -->|"Login berhasil"| Home["/home — HomeScreen"]
-    Login -.->|"Google (mock)"| Home
+    Login -.->|"Google Sign-In"| Home
 
     Home -->|"Mulai Analisis Kulit"| Scan["/scan — ScanPhotoScreen<br/>Hub foto 3 sudut"]
     Scan -->|"Ketuk kartu sudut"| Capture["/scan/capture?angle=…<br/>ScanCaptureScreen"]
@@ -36,25 +36,30 @@ skala GEA) dan tombol **Mulai Sekarang** → `/login`.
 
 `LoginScreen` memakai `AuthCubit`. Saat submit, layar otomatis menyalakan
 centang S&K + privasi (`togglePrivacy(true)`, `toggleTerms(true)`) lalu memanggil
-`login(...)`. Bila status menjadi `authenticated`, `listener` melakukan
-`context.go('/home')`.
+`login(...)` → `POST /auth/login`. Bila status menjadi `authenticated`,
+`listener` melakukan `context.go('/home')`.
 
 - **Email/password** — divalidasi di UI secara *live*: field yang kosong atau
   email yang formatnya salah memunculkan **bubble kecil** tepat di atas field
   bersangkutan (bukan panel). Pengecekan berjalan saat field ditinggalkan
   (blur), saat tombol **Masuk** ditekan, atau saat isi field dikosongkan
   kembali.
-- **Kredensial salah** — bila field sudah valid tetapi email/kata sandi tidak
-  cocok dengan akun demo, service melempar `AuthException` dan layar
-  menampilkan **panel merah** (`Alert.destructive`) **di antara judul
-  "Masuk ke Akun Anda" dan card form**. Panel ini otomatis hilang begitu
-  pengguna mengetik ulang.
-- **Akun demo** — `pengguna@gmail.com` / `skinscan123`.
-- **Google** — *mock*: langsung login dengan email contoh
-  `pengguna@gmail.com` (`viaGoogle: true`, sehingga pemeriksaan kredensial
-  dilewati).
+- **Kredensial salah** — bila field sudah valid tetapi server menolak (`401`),
+  `AuthException` membawa string `detail` dari backend dan layar menampilkan
+  **panel merah** (`Alert.destructive`) **di antara judul "Masuk ke Akun Anda"
+  dan card form**. Panel ini otomatis hilang begitu pengguna mengetik ulang.
+- **Server tidak terjangkau** — pesan
+  `'Tidak bisa menghubungi server. Cek koneksi internet.'`, memakai panel merah
+  yang sama.
+- **Akun demo** — `pengguna@gmail.com` / `skinscan123` (dibuat oleh
+  `python -m app.db.seed` di backend).
+- **Google** — `GoogleSignIn` asli dengan `serverClientId` dari
+  `core/api_config.dart`; `id_token` ditukar ke `POST /auth/google` dan backend
+  mengembalikan JWT DermaScan. Bila dialog dibatalkan → "Login Google
+  dibatalkan."
 - Tombol **Daftar Sekarang** memunculkan toast "Belum tersedia di versi
-  prototipe."
+  prototipe." Endpoint `POST /auth/register` dan `AuthRegister` sudah siap,
+  tetapi layarnya belum dibuat.
 - **Tata letak** — halaman login tidak *scrollable* pada layar normal. Konten
   memadat secara proporsional lewat `LayoutBuilder` (skala `maxHeight / 600`,
   dibatasi `0.85`–`1.0`) dan `FittedBox(scaleDown)` sebagai jaring pengaman.

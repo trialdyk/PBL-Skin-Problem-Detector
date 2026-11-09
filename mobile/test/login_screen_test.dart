@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pbl_skin_problem_detector/data/services/auth/auth.dart';
 import 'package:pbl_skin_problem_detector/main.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/login_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
@@ -14,19 +15,13 @@ double _contrastRatio(Color a, Color b) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-/// Menjalankan aplikasi asli (Splash → Welcome → Login) agar `AuthCubit`
-/// dan router ikut teruji seperti di produksi.
+/// Menjalankan aplikasi asli (Splash → Login) agar `AuthCubit` dan router
+/// ikut teruji seperti di produksi. Splash `Mulai` mengarah ke `/login`.
 Future<void> _openLogin(WidgetTester tester) async {
   await tester.pumpWidget(const SkinProblemDetectorApp());
   await tester.pump();
 
   await tester.tap(find.text('Mulai'));
-  await tester.pump();
-  // Welcome: reveal 3 fitur × 1s + CTA.
-  await tester.pump(const Duration(seconds: 4));
-  await tester.pumpAndSettle();
-
-  await tester.tap(find.text('Coba Scan Wajah'));
   await tester.pumpAndSettle();
 
   expect(find.text('Masuk ke Akun Anda'), findsOneWidget);
@@ -158,6 +153,14 @@ void _expectReadableScale(
 }
 
 void main() {
+  setUp(() {
+    AuthService.mockRemoteAuth = true;
+  });
+
+  tearDown(() {
+    AuthService.mockRemoteAuth = false;
+  });
+
   testWidgets('Email & kata sandi kosong → bubble inline, bukan panel', (
     tester,
   ) async {
@@ -289,7 +292,7 @@ void main() {
     await _settleLogin(tester);
 
     expect(find.text('Masuk ke Akun Anda'), findsNothing);
-    expect(find.text('Mulai Analisis Kulit'), findsOneWidget);
+    expect(find.text('Mari rawat kulitmu hari ini'), findsOneWidget);
   });
 
   testWidgets('Lanjutkan dengan Google tetap berhasil', (tester) async {
@@ -300,7 +303,7 @@ void main() {
     await _settleLogin(tester);
 
     expect(find.text('Masuk ke Akun Anda'), findsNothing);
-    expect(find.text('Mulai Analisis Kulit'), findsOneWidget);
+    expect(find.text('Mari rawat kulitmu hari ini'), findsOneWidget);
   });
 
   testWidgets('Login terkunci saat idle di layar normal', (tester) async {

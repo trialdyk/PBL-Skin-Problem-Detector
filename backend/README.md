@@ -277,8 +277,8 @@ curl -X POST http://127.0.0.1:8000/auth/register \
   -d '{"full_name":"Budi Santoso","email":"budi@gmail.com","password":"rahasia123","accepted_terms":true,"accepted_privacy":true}'
 ```
 
-Dokumentasi lengkap (field, kode status, format error, konfigurasi, catatan keamanan):
-[docs/api.md](../docs/api.md). Swagger interaktif ada di http://127.0.0.1:8000/docs.
+**Kontrak API** = [`openapi.json`](openapi.json) (regenerate: `python scripts/export_openapi.py`).
+Swagger UI: http://127.0.0.1:8000/docs. Konteks mobile/env/keamanan: [docs/api.md](../docs/api.md).
 
 ---
 
@@ -288,6 +288,9 @@ Dokumentasi lengkap (field, kode status, format error, konfigurasi, catatan keam
 backend/
 ├── AGENTS.md                # Aturan struktur kode + cara menambah API
 ├── CLAUDE.md                # Mengimpor AGENTS.md untuk Claude Code
+├── openapi.json             # Snapshot kontrak OpenAPI (jangan edit manual)
+├── scripts/
+│   └── export_openapi.py    # Tulis ulang openapi.json dari app.openapi()
 ├── app/
 │   ├── main.py              # Entry FastAPI + GET /health
 │   ├── dependencies.py      # Depends (get_db)
@@ -331,14 +334,14 @@ backend/
 - Config terpusat (`.env`)
 - Koneksi PostgreSQL + migrasi Alembic
 - Tabel `users`
-- Dependency `get_db`
-- `GET /health` (tidak bergantung DB)
-- `POST /auth/login` dan `POST /auth/register` (JWT, password Argon2)
-- Suite pytest
+- Dependency `get_db` dan `get_current_user` (Bearer JWT)
+- Publik: `GET /health`, `POST /auth/login`, `POST /auth/register`, `POST /auth/google`
+- Protected: `GET /users/status`, `GET /items/status` (Authorize di Swagger)
+- Google Sign-In: `GOOGLE_CLIENT_ID` (Web client) di `.env`
+- Suite pytest + snapshot `openapi.json`
 
 **Belum dikerjakan (deferred)**
 - Profil, refresh token, logout, verifikasi email, lupa kata sandi
-- Verifikasi JWT (dependency `get_current_user`) dan endpoint terlindungi
 - Rate limit login, CORS
 - Tabel analysis / images / results
 - Cloudflare R2, upload gambar, inference ML
