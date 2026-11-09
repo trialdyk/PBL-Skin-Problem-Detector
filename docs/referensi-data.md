@@ -17,6 +17,56 @@ Didefinisikan di `gea_scale.dart` sebagai tabel statis grade **0–5**.
 | 4 | Berat | Severe | Berat; jerawat inflamasi luas disertai banyak komedo, papula, pustula, serta nodul dan kista. |
 | 5 | Sangat berat | Very severe | Sangat berat; jerawat meradang parah yang menutupi area luas dengan dominasi nodul dan kista. |
 
+### Pemetaan label model ML → GEA (IGA0–IGA4)
+
+Model di `machine-learning/` dan `model-comparator/` mengeluarkan **5 kelas IGA
+(`IGA0`–`IGA4`)** — lihat `"labels"` di
+[`model-comparator/models.json`](../model-comparator/models.json). Aplikasi
+memakai **6 tingkat GEA 0–5**, sehingga pemetaan resmi proyek adalah **1:1 tanpa
+offset**: urutan IGA sama dengan grade GEA, dan nama labelnya memang identik.
+
+| Label model | IGA | Grade GEA | Label GEA |
+|---|---|---|---|
+| `IGA0` | 0 | **0** | Bersih |
+| `IGA1` | 1 | **1** | Hampir bersih |
+| `IGA2` | 2 | **2** | Ringan |
+| `IGA3` | 3 | **3** | Sedang |
+| `IGA4` | 4 | **4** | Berat |
+
+Aturan yang menyertainya:
+
+- **Grade GEA 5 (Sangat berat) tidak punya kelas model.** Model 5 kelas tidak
+  akan pernah mengeluarkan grade 5. Jangan memaksa `IGA4` menjadi 5 — grade 5
+  hanya boleh berasal dari penilaian manual/eskalasi dokter, atau aturan
+  tambahan yang harus disepakati terpisah.
+- **Indeks output model = indeks tabel.** `argmax` ke-0 berarti `IGA0` → GEA 0,
+  dan seterusnya; jangan mengurutkan ulang label.
+- **Kelas ke-6 Roboflow (`IGA3_Level3`)** digabung ke `IGA3` saat training model
+  5 kelas (dataset Roboflow punya 6 kelas, model yang dipakai di comparator
+  punya 5). Lihat [`machine-learning/README.md`](../machine-learning/README.md).
+- **Model 4 kelas (Hayashi)** seperti `machine-learning/models/custom_cnn_1.tflite`
+  tidak mengikuti skala IGA. Petakan ke IGA lebih dulu, baru ke GEA, dan
+  validasi pemetaannya bersama tim ML — jangan langsung menempelkan ke grade.
+
+Bentuk yang direncanakan di kode (satu sumber kebenaran, dipakai saat inferensi
+disambungkan):
+
+```dart
+/// Pemetaan resmi output model (IGA0–IGA4) → grade GEA.
+/// Urutan list = urutan kelas output model; jangan diurutkan ulang.
+abstract final class IgaGrade {
+  static const List<String> labels = ['IGA0', 'IGA1', 'IGA2', 'IGA3', 'IGA4'];
+  static const List<int> geaGrades = [0, 1, 2, 3, 4];
+
+  static GeaResult fromIgaIndex(int index) =>
+      GeaResult.fromGrade(geaGrades[index.clamp(0, geaGrades.length - 1)]);
+}
+```
+
+Pemetaan ini **belum dipakai kode mana pun**: hasil diagnosa aplikasi masih
+rule-based dari interview (lihat "Aturan Diagnosa" di bawah), dan tidak ada
+endpoint inferensi di backend.
+
 ### Warna grade
 
 `AppColors.gradeColor(g)` dan `AppColors.onGrade(g)` memetakan grade ke warna
@@ -87,14 +137,17 @@ Enum `SelfieAngle`: `front`, `left`, `right`.
 
 ## `UserModel`
 
-```dart
-class UserModel {
-  const UserModel({required this.email});
-  final String email;
-}
-```
+Hasil parsing respons autentikasi (`AuthResponse`): `access_token` + `user`.
 
-Mock sederhana — hanya menyimpan email (tidak ada token/backend).
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `email` | `String` | Email akun |
+| `fullName` | `String?` | Nama tampilan (`full_name`), `null` bila tidak diisi |
+| `accessToken` | `String?` | JWT dari `access_token`; juga disimpan di `ApiClient` |
+
+`UserModel.fromAuthJson(json)` membaca `json['access_token']` dan
+`json['user']['email']` / `json['user']['full_name']`. Token **tidak** disimpan
+ke storage permanen — menutup aplikasi berarti harus login ulang.
 
 ## Aturan Diagnosa (rule-based)
 
@@ -152,19 +205,33 @@ Skor akhir dibulatkan dan di-*clamp* ke 0–5.
 - `rememberLeftYaw()` menyimpan tanda yaw sisi kiri; dipakai `ScanCubit.leftYawSign`
   agar sisi kanan tervalidasi meski diambil di layar terpisah.
 
-## Autentikasi (mock)
+## Autentikasi
 
-Akun demo prototipe: **`pengguna@gmail.com`** / **`skinscan123`**.
+Autentikasi memakai backend FastAPI (kontrak: `backend/openapi.json`). Akun demo
+hasil seed backend: **`pengguna@gmail.com`** / **`skinscan123`**.
 
-`AuthService.login()`:
+| Alur UI | File service | Endpoint |
+|---|---|---|
+| Email + kata sandi | `auth/auth_login.dart` | `POST /auth/login` |
+| Google Sign-In | `auth/auth_google.dart` | `POST /auth/google` |
+| Registrasi — layarnya belum ada | `auth/auth_register.dart` | `POST /auth/register` |
 
-1. Delay **400 ms**.
-2. Jika S&K/privasi tidak dicentang → `AuthException`.
-3. Jika `viaGoogle == false` dan kredensial tidak cocok dengan akun demo →
-   `AuthException('Email atau kata sandi salah. Periksa kembali.')`.
-4. Selain itu → `UserModel(email: email.trim())`.
+`AuthService` (facade) melakukan:
 
-Validasi **"tidak boleh kosong"** dan **format email** tidak dikerjakan di
-service, melainkan di `LoginScreen` (lihat `alur-pengguna.md` §2) supaya
-pengguna mendapat umpan balik langsung. Dengan begitu `AuthException` dari
-service hanya berarti satu hal: kredensial salah.
+1. Menolak submit bila S&K/privasi belum dicentang → `AuthException`, tanpa
+   memanggil jaringan.
+2. Memanggil file endpoint sesuai alur. Body selalu berisi
+   `accepted_terms: true` dan `accepted_privacy: true`, karena `LoginScreen`
+   menyalakan kedua centang sebelum submit.
+3. Menyimpan `access_token` ke `ApiClient` (`setAccessToken`), sehingga request
+   berikutnya dengan `auth: true` otomatis membawa `Authorization: Bearer`.
+4. Bila status bukan `200`/`201` → `AuthException` berisi string `detail` dari
+   server (mis. `Email atau kata sandi salah. Periksa kembali.`). Bila jaringan
+   gagal → `'Tidak bisa menghubungi server. Cek koneksi internet.'`.
+
+Validasi **"tidak boleh kosong"** dan **format email** dikerjakan di
+`LoginScreen` (lihat `alur-pengguna.md` §2) agar pengguna dapat umpan balik
+langsung; service hanya meneruskan keputusan server.
+
+Untuk widget test, `AuthService.mockRemoteAuth` (`@visibleForTesting`) diset
+`true` agar Google SDK dan HTTP dilewati — lihat `test/login_screen_test.dart`.

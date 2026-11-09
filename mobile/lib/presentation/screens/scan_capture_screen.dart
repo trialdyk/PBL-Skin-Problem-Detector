@@ -9,6 +9,7 @@ import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
 import 'package:pbl_skin_problem_detector/data/services/face_scan_analyzer.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/selfie_angle_progress.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class ScanCaptureScreen extends StatefulWidget {
@@ -24,8 +25,10 @@ class ScanCaptureScreen extends StatefulWidget {
 class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
   CameraController? _controller;
   final _analyzer = FaceScanAnalyzer();
+  final _tts = FlutterTts();
 
   String? _error;
+  String? _voiceError;
   bool _initializing = true;
   bool _capturing = false;
   bool _streaming = false;
@@ -35,6 +38,7 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
   bool _angleOk = false;
 
   int? _countdown;
+  int _announcementId = 0;
   Timer? _countdownTimer;
   DateTime _lastAnalyze = DateTime.fromMillisecondsSinceEpoch(0);
   SelfieAngle _targetAngle = SelfieAngle.front;
@@ -53,8 +57,33 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
         _analyzer.leftYawSign = cubit.leftYawSign;
         cubit.selectAngle(single);
       }
+      unawaited(_announceAngle(cubit.state.currentAngle));
     });
     _initCamera();
+  }
+
+  Future<void> _announceAngle(SelfieAngle angle) async {
+    final instruction = _instruction(angle);
+    final announcementId = ++_announcementId;
+    try {
+      await _tts.stop();
+      if (!mounted || announcementId != _announcementId) return;
+      await _tts.setLanguage('id-ID');
+      await _tts.setSpeechRate(0.48);
+      await _tts.setVolume(1);
+      await _tts.speak(instruction);
+      if (!mounted || announcementId != _announcementId) return;
+      if (_voiceError != null) {
+        setState(() => _voiceError = null);
+      }
+    } on Object {
+      if (!mounted) return;
+      if (announcementId != _announcementId) return;
+      setState(
+        () => _voiceError =
+            'Suara panduan tidak tersedia. Ikuti tulisan di layar.',
+      );
+    }
   }
 
   Future<void> _initCamera() async {
@@ -224,17 +253,22 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
   }
 
   String _angleLabel(SelfieAngle angle) => switch (angle) {
-        SelfieAngle.front => 'LIHAT DEPAN',
-        SelfieAngle.left => 'LIHAT KIRI',
-        SelfieAngle.right => 'LIHAT KANAN',
-      };
+    SelfieAngle.front => 'LIHAT DEPAN',
+    SelfieAngle.left => 'LIHAT KIRI',
+    SelfieAngle.right => 'LIHAT KANAN',
+  };
+
+  String _instruction(SelfieAngle angle) => switch (angle) {
+    SelfieAngle.front => 'Pandangan lurus ke depan',
+    SelfieAngle.left => 'Hadap kiri',
+    SelfieAngle.right => 'Hadap kanan',
+  };
 
   String _hint(SelfieAngle angle) => switch (angle) {
-        SelfieAngle.front => 'Hadapkan wajah lurus ke kamera di dalam oval',
-        SelfieAngle.left => 'Putar wajah ke samping (±30°) sampai indikator aktif',
-        SelfieAngle.right =>
-          'Putar wajah ke sisi berlawanan dari foto sebelumnya',
-      };
+    SelfieAngle.front => 'Pandangan lurus ke depan',
+    SelfieAngle.left => 'Hadap kiri sampai indikator sudut aktif',
+    SelfieAngle.right => 'Hadap kanan sampai indikator sudut aktif',
+  };
 
   @override
   void dispose() {
@@ -249,6 +283,7 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
       }
     }
     _analyzer.dispose();
+    unawaited(_tts.stop());
     super.dispose();
   }
 
@@ -258,6 +293,7 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
       listenWhen: (prev, next) => prev.currentAngle != next.currentAngle,
       listener: (context, state) {
         _targetAngle = state.currentAngle;
+        unawaited(_announceAngle(state.currentAngle));
         _countdownTimer?.cancel();
         _countdownTimer = null;
         setState(() {
@@ -336,6 +372,17 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                       fontSize: 12,
                     ),
                   ),
+                  if (_voiceError != null) ...[
+                    const Gap(4),
+                    Text(
+                      _voiceError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.cameraMuted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                   const Gap(12),
                   Expanded(
                     child: Center(
@@ -363,7 +410,9 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                                     fit: BoxFit.cover,
                                     child: SizedBox(
                                       width: _controller!
-                                          .value.previewSize!.height,
+                                          .value
+                                          .previewSize!
+                                          .height,
                                       height:
                                           _controller!.value.previewSize!.width,
                                       child: CameraPreview(_controller!),
@@ -387,10 +436,11 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                                     height: 300,
                                     decoration: BoxDecoration(
                                       border: Border.all(
-                                        color: (ready
-                                                ? AppColors.brandLight
-                                                : AppColors.white)
-                                            .withValues(alpha: 0.85),
+                                        color:
+                                            (ready
+                                                    ? AppColors.brandLight
+                                                    : AppColors.white)
+                                                .withValues(alpha: 0.85),
                                         width: 2,
                                       ),
                                       borderRadius: const BorderRadius.all(

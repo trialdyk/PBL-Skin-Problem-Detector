@@ -15,19 +15,22 @@ Future<void> _waitWelcomeReady(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('Splash screen renders lalu menuju welcome via Mulai', (
+  testWidgets('Splash screen renders lalu Mulai membuka halaman login', (
     tester,
   ) async {
     await tester.pumpWidget(const SkinProblemDetectorApp());
     await tester.pump();
 
-    expect(find.text('The Perfect'), findsOneWidget);
+    // Splash saat ini memakai kartu CTA dengan judul ini (bukan lagi "The Perfect").
+    expect(find.text('The Perfect Skin Care Regimen'), findsOneWidget);
     expect(find.text('Mulai'), findsOneWidget);
 
+    // Splash sengaja langsung ke /login: WelcomeScreen hanya dipakai sebagai
+    // layar perkenalan mandiri, bukan bagian alur splash.
     await tester.tap(find.text('Mulai'));
-    await _waitWelcomeReady(tester);
+    await tester.pumpAndSettle();
 
-    expect(find.text('Coba Scan Wajah'), findsOneWidget);
+    expect(find.text('Masuk ke Akun Anda'), findsOneWidget);
   });
 
   testWidgets('Welcome muat tanpa overflow di berbagai ukuran layar', (

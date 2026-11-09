@@ -101,6 +101,33 @@ Interview didefinisikan di `ScanCubit`. Untuk menambah pertanyaan ke-6:
 5. Naikkan ambang batas `state.interviewStep >= 5` menjadi `>= 6`.
 6. Sesuaikan `total` pada `InterviewStepProgress` bila perlu.
 
+## Menyambungkan Model ML (rencana)
+
+Saat ini diagnosa masih rule-based (`GeaDiagnosisService`) dan belum ada
+pemanggilan model sama sekali. Langkah yang disepakati bila model hendak
+dipakai:
+
+1. Tambahkan dependensi inferensi (mis. `tflite_flutter`) di `pubspec.yaml`,
+   lalu jalankan `flutter pub get`.
+2. Letakkan berkas model di `assets/` (mis. `assets/models/custom_cnn_1.tflite`)
+   dan daftarkan folder itu pada bagian `flutter: assets:` di `pubspec.yaml`.
+3. Buat service baru di `data/services/` (mis. `acne_inference_service.dart`):
+   resize gambar ke ukuran input model, jalankan inferensi, kembalikan
+   probabilitas per kelas. Preprocessing tetap di service, bukan di widget.
+4. Petakan hasil ke grade memakai pemetaan resmi **IGA0–IGA4 → GEA 0–4** (lihat
+   [referensi-data.md](referensi-data.md#pemetaan-label-model-ml--gea-iga0iga4)).
+   **Jangan** memunculkan grade GEA 5 dari output model — model 5 kelas tidak
+   punya kelas tersebut.
+5. Panggil service dari `ScanCubit` lewat repository (bukan dari layar), lalu
+   tetap hasilkan `GeaResult` agar `GeaResultBadge` dan `GeaScaleBar` tidak
+   perlu diubah.
+6. Tambahkan unit test untuk fungsi pemetaan dan satu widget test yang memakai
+   hasil model palsu, supaya test tetap jalan tanpa berkas `.tflite`.
+
+Alternatif: inferensi dijalankan di backend (`POST /scan/{scan_id}/analyze`).
+Bila jalur itu dipilih, ikuti [fetching_api.md](fetching_api.md) dan perbarui
+`backend/openapi.json` lebih dulu.
+
 ## Tema & Gaya
 
 Semua warna diambil dari `AppColors` (jangan hard-code hex di widget).
