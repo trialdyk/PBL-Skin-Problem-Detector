@@ -53,6 +53,34 @@ class ApiClient {
         .timeout(timeout);
   }
 
+  /// Multipart POST for file uploads, e.g. `POST /ml/predict`.
+  ///
+  /// [files] maps a form field name to absolute file paths (one part per path).
+  /// The JSON `Content-Type` is dropped so `http` can set the multipart boundary.
+  Future<http.Response> postMultipart(
+    String path, {
+    required Map<String, List<String>> files,
+    Map<String, String> fields = const {},
+    bool auth = false,
+    Duration timeout = const Duration(seconds: 60),
+  }) async {
+    final multipartHeaders = headers(auth: auth)..remove('Content-Type');
+    final request = http.MultipartRequest('POST', uri(path))
+      ..headers.addAll(multipartHeaders)
+      ..fields.addAll(fields);
+
+    for (final entry in files.entries) {
+      for (final filePath in entry.value) {
+        request.files.add(
+          await http.MultipartFile.fromPath(entry.key, filePath),
+        );
+      }
+    }
+
+    final streamed = await _client.send(request).timeout(timeout);
+    return http.Response.fromStream(streamed);
+  }
+
   void dispose() {
     _http?.close();
     _http = null;

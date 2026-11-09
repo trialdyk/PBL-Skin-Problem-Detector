@@ -4,12 +4,25 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
+import 'package:pbl_skin_problem_detector/data/models/result_source.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/gea_result_badge.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/gea_scale_bar.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+
+/// Catatan hasil: teks berbeda untuk hasil CNN dan hasil rule-based.
+String _noteFor(ResultSource source) {
+  return switch (source) {
+    ResultSource.ml =>
+      'Hasil dianalisis dari foto wajah memakai model CNN. Akurasi model '
+          'terbatas, jadi tetap bukan pengganti diagnosis dokter.',
+    ResultSource.ruleBased =>
+      'Hasil saat ini rule-based dari interview (foto belum dianalisis ML). '
+          'Bukan pengganti diagnosis dokter.',
+  };
+}
 
 class DiagnosisScreen extends StatelessWidget {
   const DiagnosisScreen({super.key});
@@ -184,10 +197,7 @@ class DiagnosisScreen extends StatelessWidget {
                                         ),
                                         const Gap(4),
                                         Text(
-                                          'Hasil saat ini rule-based dari '
-                                          'interview (foto belum dianalisis '
-                                          'ML). Bukan pengganti diagnosis '
-                                          'dokter.',
+                                          _noteFor(result.source),
                                           style: appFont(
                                             fontSize: 12.5,
                                             color: AppColors.inkMuted,
