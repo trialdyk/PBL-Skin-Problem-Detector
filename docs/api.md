@@ -106,7 +106,7 @@ Implementasi ada di `mobile/lib/data/services/auth/` (satu file per endpoint):
 |---|---|---|
 | `POST /auth/login` | `auth/auth_login.dart` | `LoginScreen` (email + kata sandi) |
 | `POST /auth/google` | `auth/auth_google.dart` | `LoginScreen` (tombol Google) |
-| `POST /auth/register` | `auth/auth_register.dart` | **belum ada layarnya** |
+| `POST /auth/register` | `auth/auth_register.dart` | `RegisterScreen` → `AuthCubit.register` → `AuthRepository.register`; sukses langsung ke beranda |
 | `POST /ml/predict` | `ml/ml_predict.dart` | `DiagnosisScreen` (lewat `ScanRepository`) |
 
 Field yang dikirim (schema: `LoginRequest` / `RegisterRequest` /
@@ -116,8 +116,8 @@ Field yang dikirim (schema: `LoginRequest` / `RegisterRequest` /
 |---|---|
 | `email` | Kolom "Email" (`trim()` di klien; server men-*lowercase*) |
 | `password` | Kolom "Kata Sandi" |
-| `full_name` | Hanya register; belum ada input di UI |
-| `accepted_terms` / `accepted_privacy` | Selalu `true` — `LoginScreen` menyalakan kedua centang sebelum submit (teks S&K di UI, bukan checkbox terpisah) |
+| `full_name` | Input Nama Lengkap pada halaman register |
+| `accepted_terms` / `accepted_privacy` | Register mewajibkan checkbox persetujuan sebelum mengirim `true`; login memakai persetujuan lewat teks di UI |
 | `id_token` | Hanya `/auth/google`, dari `GoogleSignIn` dengan `serverClientId` = Web client ID |
 
 Checkbox "Ingat saya" hanya state lokal dan **tidak** dikirim ke API.
