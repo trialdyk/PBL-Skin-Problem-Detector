@@ -23,6 +23,7 @@ PBL-Skin-Problem-Detector/
 │   │       └── theme/                # Token warna, tema, font
 │   ├── test/                         # Widget test
 │   ├── assets/images/                # Gambar & logo
+│   ├── assets/audio/                 # Efek suara (tick countdown, rana)
 │   ├── tools/                        # Script bantu (olah SVG logo)
 │   ├── android/ ios/ web/ windows/ linux/ macos/   # Folder platform (generated)
 │   └── pubspec.yaml                  # Dependensi & metadata
@@ -136,6 +137,15 @@ Domain inferensi; dipanggil `ScanRepository` saat diagnosa.
 | `interview_screen.dart` | Interview chat | `/scan/interview` |
 | `diagnosis_screen.dart` | Hasil GEA | `/scan/result` |
 
+## `lib/presentation/audio/`
+
+Efek suara pendek untuk umpan balik UI. Ditaruh di layer presentation (bukan
+`data/services/`) karena bukan akses data, dan dipakai langsung oleh layar.
+
+| File | Isi |
+|---|---|
+| `app_sound_player.dart` | `AppSoundPlayer` (interface) + `AssetSoundPlayer` (MP3 di `assets/audio/`) |
+
 ## `lib/presentation/widgets/`
 
 | File | Isi |
@@ -167,12 +177,34 @@ Domain inferensi; dipanggil `ScanRepository` saat diagnosa.
 | `login_screen_test.dart` | Tata letak login, panel/bubble galat, skala teks & kontras |
 | `ml_predict_test.dart` | `MlPredict`: multipart + Bearer, parsing grade, error 503/jaringan/body rusak |
 | `scan_repository_test.dart` | CNN dipakai saat sukses; fallback rule-based saat gagal/tanpa foto |
+| `app_sound_player_test.dart` | Aset audio termuat, guard galat, kontrak 3 tick + 1 shutter |
 
 ## `tools/`
 
 Script Python sekali pakai untuk mengolah aset SVG logo
 (`extract_mark_svg.py`, `inspect_logo_svg.py`, `strip_tagline_svg.py`). Bukan
 bagian dari build aplikasi.
+
+`tools/audio_src/` menyimpan **audio sumber asli** (tidak ikut dibundel, karena
+hanya `assets/` yang masuk pubspec): `countdown_tick_3beeps.mp3` (satu file
+berisi 3 dentuman + 0,6 s hening di awal) dan `shutter_source.mp3`. File di
+`assets/audio/` adalah hasil potong dari sumber tersebut, dibuat dengan ffmpeg:
+
+```
+# tick: ambil dentuman pertama (0,610-0,700 s), buang hening awal, normalisasi
+ffmpeg -i tools/audio_src/countdown_tick_3beeps.mp3 \
+  -af "atrim=start=0.610:end=0.700,asetpts=PTS-STARTPTS,volume=8.9dB,afade=t=out:st=0.062:d=0.028" \
+  -ac 1 -ar 44100 -c:a libmp3lame -b:a 96k assets/audio/countdown_tick.mp3
+
+# shutter: buang 95 ms hening di awal, normalisasi
+ffmpeg -i tools/audio_src/shutter_source.mp3 \
+  -af "atrim=start=0.090:end=0.315,asetpts=PTS-STARTPTS,volume=4dB,afade=t=out:st=0.195:d=0.030" \
+  -ac 1 -ar 44100 -c:a libmp3lame -b:a 96k assets/audio/shutter.mp3
+```
+
+Spesifikasi akhir `assets/audio/`: MP3 mono 44,1 kHz 96 kbps, tanpa leading
+silence (`countdown_tick` 90 ms, `shutter` 225 ms), peak ≈ −4 dBFS. Leading
+silence wajib nol — itulah penyebab utama bunyi terasa telat.
 
 ## Catatan
 
