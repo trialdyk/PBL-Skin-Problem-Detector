@@ -33,20 +33,27 @@ class AssetSoundPlayer implements AppSoundPlayer {
   final AudioPlayer _tick = AudioPlayer(playerId: 'countdown_tick');
   final AudioPlayer _shutter = AudioPlayer(playerId: 'shutter');
 
-  bool _prepared = false;
+  bool _ready = false;
   bool _disposed = false;
 
-  /// Android: `gainTransientMayDuck` supaya TTS panduan sudut hanya mengecil
-  /// sesaat, bukan berhenti. iOS: `playback` agar suara tetap terdengar walau
+  /// Android: `USAGE_MEDIA` → **STREAM_MUSIC**, sengaja dipilih (bukan
+  /// `assistanceSonification` yang memetakan ke STREAM_SYSTEM). Di banyak
+  /// device, termasuk Infinix/Transsion, `STREAM_SYSTEM` di-alias ke
+  /// `STREAM_RING` sehingga ikut ter-mute saat HP mode senyap — akibatnya
+  /// tick tidak terdengar sama sekali. `STREAM_MUSIC` mengikuti slider volume
+  /// media yang memang dipakai user untuk app ini.
+  ///
+  /// `gainTransientMayDuck` membuat TTS panduan sudut hanya mengecil sesaat,
+  /// bukan berhenti. iOS memakai `playback` agar suara tetap terdengar walau
   /// tombol silent aktif, ditambah `mixWithOthers` agar audio lain tidak putus.
   ///
   /// Catatan: `defaultToSpeaker` sengaja tidak dipakai — package ini hanya
   /// mengizinkannya untuk kategori `playAndRecord` (lihat assert di
   /// `AudioContextIOS`).
-  static final _audioContext = AudioContext(
+  static final audioContext = AudioContext(
     android: const AudioContextAndroid(
       contentType: AndroidContentType.sonification,
-      usageType: AndroidUsageType.assistanceSonification,
+      usageType: AndroidUsageType.media,
       audioFocus: AndroidAudioFocus.gainTransientMayDuck,
     ),
     iOS: AudioContextIOS(
@@ -57,13 +64,17 @@ class AssetSoundPlayer implements AppSoundPlayer {
 
   @override
   Future<void> prepare() async {
-    if (_prepared || _disposed) return;
-    _prepared = true;
+    if (_ready || _disposed) return;
     try {
       await _load(_tick, tickAsset);
       await _load(_shutter, shutterAsset);
-    } on Object catch (error) {
+      // Hanya dianggap siap kalau kedua aset benar-benar termuat. Kalau gagal,
+      // `_replay` tidak dipanggil sama sekali: di Android, `resume()` pada
+      // player yang belum pernah punya source adalah no-op tanpa error.
+      _ready = true;
+    } on Object catch (error, stackTrace) {
       _warn('prepare', error);
+      debugPrintStack(stackTrace: stackTrace, maxFrames: 6);
     }
   }
 
@@ -86,7 +97,7 @@ class AssetSoundPlayer implements AppSoundPlayer {
   }
 
   Future<void> _load(AudioPlayer player, String asset) async {
-    await player.setAudioContext(_audioContext);
+    await player.setAudioContext(audioContext);
     // lowLatency = SoundPool di Android, jauh lebih responsif untuk file pendek.
     await player.setPlayerMode(PlayerMode.lowLatency);
     await player.setReleaseMode(ReleaseMode.stop);
@@ -96,7 +107,7 @@ class AssetSoundPlayer implements AppSoundPlayer {
   /// `stop()` mereset posisi ke awal, jadi `resume()` selalu memutar dari 0 —
   /// penting agar tick beruntun tiap detik tidak terpotong di tengah.
   Future<void> _replay(AudioPlayer player, String label) async {
-    if (!_prepared || _disposed) return;
+    if (!_ready || _disposed) return;
     try {
       await player.stop();
       await player.resume();

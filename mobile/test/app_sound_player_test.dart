@@ -1,3 +1,4 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pbl_skin_problem_detector/presentation/audio/app_sound_player.dart';
@@ -54,6 +55,25 @@ void main() {
   test('path aset memakai format AudioCache (tanpa prefix assets/)', () {
     expect(AssetSoundPlayer.tickAsset, 'audio/countdown_tick.mp3');
     expect(AssetSoundPlayer.shutterAsset, 'audio/shutter.mp3');
+  });
+
+  test('Android memakai STREAM_MUSIC, bukan STREAM_SYSTEM', () {
+    // Regresi: `assistanceSonification` memetakan ke STREAM_SYSTEM, yang di
+    // banyak device di-alias ke STREAM_RING dan ikut ter-mute saat HP mode
+    // senyap — tick jadi tidak terdengar sama sekali. `USAGE_MEDIA` memakai
+    // STREAM_MUSIC yang mengikuti slider volume media.
+    final android = AssetSoundPlayer.audioContext.android;
+
+    expect(android.usageType, AndroidUsageType.media);
+    expect(android.contentType, AndroidContentType.sonification);
+    expect(android.audioFocus, AndroidAudioFocus.gainTransientMayDuck);
+  });
+
+  test('iOS memakai playback agar tetap bunyi saat silent switch', () {
+    final iOS = AssetSoundPlayer.audioContext.iOS;
+
+    expect(iOS.category, AVAudioSessionCategory.playback);
+    expect(iOS.options, contains(AVAudioSessionOptions.mixWithOthers));
   });
 
   test('playTick sebelum prepare tidak melempar galat', () async {
