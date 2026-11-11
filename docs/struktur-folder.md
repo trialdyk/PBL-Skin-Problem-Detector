@@ -15,6 +15,7 @@ PBL-Skin-Problem-Detector/
 │   │   │   ├── repositories/         # Pemilik state sesi & orkestrasi
 │   │   │   └── services/             # Logika murni / akses platform / HTTP
 │   │   │       ├── auth/             # 1 file ≈ 1 endpoint auth
+│   │   │       ├── ml/               # 1 file ≈ 1 endpoint ML (prediksi CNN)
 │   │   │       └── scan/             # Contoh endpoint protected
 │   │   └── presentation/
 │   │       ├── screens/              # Layar (halaman)
@@ -22,6 +23,7 @@ PBL-Skin-Problem-Detector/
 │   │       └── theme/                # Token warna, tema, font
 │   ├── test/                         # Widget test
 │   ├── assets/images/                # Gambar & logo
+│   ├── assets/audio/                 # Efek suara (tick countdown, rana)
 │   ├── tools/                        # Script bantu (olah SVG logo)
 │   ├── android/ ios/ web/ windows/ linux/ macos/   # Folder platform (generated)
 │   └── pubspec.yaml                  # Dependensi & metadata
@@ -58,7 +60,8 @@ terhadap folder tersebut.
 | File | Isi |
 |---|---|
 | `gea_scale.dart` | `GeaScale` (tabel grade 0–5) + `GeaGradeInfo` |
-| `gea_result.dart` | `GeaResult` — hasil akhir (grade, label ID/EN, deskripsi) |
+| `gea_result.dart` | `GeaResult` — hasil akhir (grade, label ID/EN, deskripsi, `source`) |
+| `result_source.dart` | `ResultSource` — asal hasil: `ml` (CNN) atau `ruleBased` (interview) |
 | `interview_answers.dart` | `InterviewAnswers` + enum `GenderOption`, `SkinTypeOption` |
 | `scan_session.dart` | `ScanSession` (3 path foto, interview, hasil) + enum `SelfieAngle` |
 | `user_model.dart` | `UserModel` — `email`, `fullName`, `accessToken` + `fromAuthJson` |
@@ -69,7 +72,7 @@ terhadap folder tersebut.
 | File | Isi |
 |---|---|
 | `auth_repository.dart` | Menyimpan `_currentUser`, meneruskan ke `AuthService`, membuka `api` (token Bearer) |
-| `scan_repository.dart` | Menyimpan `_session`, mengatur foto/interview, memanggil diagnosa |
+| `scan_repository.dart` | Menyimpan `_session`, mengatur foto/interview, diagnosa CNN → fallback rule-based |
 
 ## `lib/data/services/`
 
@@ -104,6 +107,17 @@ Contoh domain endpoint **protected**; belum dipanggil layar mana pun.
 | `scan_service.dart` | Facade `ScanService` |
 | `scan_status.dart` | `GET /users/status` dengan `auth: true` |
 
+### `lib/data/services/ml/`
+
+Domain inferensi; dipanggil `ScanRepository` saat diagnosa.
+
+| File | Isi |
+|---|---|
+| `ml.dart` | Barrel export domain ML |
+| `ml_predict.dart` | `POST /ml/predict` (multipart 1–3 foto) + interface `MlPredictor` |
+| `ml_prediction.dart` | `MlPrediction` — grade GEA, `top_label`, model, probabilitas |
+| `ml_exception.dart` | `MlException` (untuk log; repo langsung fallback) |
+
 ## `lib/presentation/screens/`
 
 | File | Layar | Route |
@@ -122,6 +136,15 @@ Contoh domain endpoint **protected**; belum dipanggil layar mana pun.
 | `scan_confirm_screen.dart` | Konfirmasi foto | `/scan/confirm` |
 | `interview_screen.dart` | Interview chat | `/scan/interview` |
 | `diagnosis_screen.dart` | Hasil GEA | `/scan/result` |
+
+## `lib/presentation/audio/`
+
+Efek suara pendek untuk umpan balik UI. Ditaruh di layer presentation (bukan
+`data/services/`) karena bukan akses data, dan dipakai langsung oleh layar.
+
+| File | Isi |
+|---|---|
+| `app_sound_player.dart` | `AppSoundPlayer` (interface) + `AssetSoundPlayer` (MP3 di `assets/audio/`) |
 
 ## `lib/presentation/widgets/`
 
@@ -152,12 +175,36 @@ Contoh domain endpoint **protected**; belum dipanggil layar mana pun.
 |---|---|
 | `widget_test.dart` | Splash → login lewat tombol Mulai; welcome bebas overflow di 6 ukuran layar |
 | `login_screen_test.dart` | Tata letak login, panel/bubble galat, skala teks & kontras |
+| `ml_predict_test.dart` | `MlPredict`: multipart + Bearer, parsing grade, error 503/jaringan/body rusak |
+| `scan_repository_test.dart` | CNN dipakai saat sukses; fallback rule-based saat gagal/tanpa foto |
+| `app_sound_player_test.dart` | Aset audio termuat, guard galat, kontrak 3 tick + 1 shutter |
 
 ## `tools/`
 
 Script Python sekali pakai untuk mengolah aset SVG logo
 (`extract_mark_svg.py`, `inspect_logo_svg.py`, `strip_tagline_svg.py`). Bukan
 bagian dari build aplikasi.
+
+`tools/audio_src/` menyimpan **audio sumber asli** (tidak ikut dibundel, karena
+hanya `assets/` yang masuk pubspec): `countdown_tick_3beeps.mp3` (satu file
+berisi 3 dentuman + 0,6 s hening di awal) dan `shutter_source.mp3`. File di
+`assets/audio/` adalah hasil potong dari sumber tersebut, dibuat dengan ffmpeg:
+
+```
+# tick: ambil dentuman pertama (0,610-0,700 s), buang hening awal, normalisasi
+ffmpeg -i tools/audio_src/countdown_tick_3beeps.mp3 \
+  -af "atrim=start=0.610:end=0.700,asetpts=PTS-STARTPTS,volume=8.9dB,afade=t=out:st=0.062:d=0.028" \
+  -ac 1 -ar 44100 -c:a libmp3lame -b:a 96k assets/audio/countdown_tick.mp3
+
+# shutter: buang 95 ms hening di awal, normalisasi
+ffmpeg -i tools/audio_src/shutter_source.mp3 \
+  -af "atrim=start=0.090:end=0.315,asetpts=PTS-STARTPTS,volume=4dB,afade=t=out:st=0.195:d=0.030" \
+  -ac 1 -ar 44100 -c:a libmp3lame -b:a 96k assets/audio/shutter.mp3
+```
+
+Spesifikasi akhir `assets/audio/`: MP3 mono 44,1 kHz 96 kbps, tanpa leading
+silence (`countdown_tick` 90 ms, `shutter` 225 ms), peak ≈ −4 dBFS. Leading
+silence wajib nol — itulah penyebab utama bunyi terasa telat.
 
 ## Catatan
 

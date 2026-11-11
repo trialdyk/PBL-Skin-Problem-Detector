@@ -1,0 +1,1 @@
+"""Machine-learning artifacts shipped with the backend (TFLite model + labels)."""

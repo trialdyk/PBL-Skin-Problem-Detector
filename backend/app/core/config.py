@@ -33,8 +33,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
 
-    # Web OAuth client ID (audience for Google ID tokens from the mobile app).
+    # Google: Web OAuth client ID (audience for Google ID tokens from the app).
     google_client_id: str = ""
+
+    # Inference model shipped in app/ml/artifacts (relative paths resolve against backend/).
+    ml_model_path: str = "app/ml/artifacts/dermascan_custom_cnn.tflite"
+    ml_input_size: int = 160
+    ml_max_upload_mb: int = 10
 
     @model_validator(mode="after")
     def _require_jwt_secret_outside_development(self) -> "Settings":

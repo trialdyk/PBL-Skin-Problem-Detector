@@ -259,8 +259,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           Gap(s(20)),
                           _buildFormCard(loading, cubit, s),
                           Gap(s(20)),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            runSpacing: 4,
                             children: [
                               Text(
                                 'Belum memiliki akun? ',
@@ -274,7 +276,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 fontSize: s(14),
                                 onTap: loading
                                     ? null
-                                    : () => showComingSoon(context),
+                                    : () {
+                                        cubit.clearError();
+                                        context.push('/register');
+                                      },
                               ),
                             ],
                           ),

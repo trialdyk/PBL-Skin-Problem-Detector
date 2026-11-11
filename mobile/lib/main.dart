@@ -7,6 +7,7 @@ import 'package:pbl_skin_problem_detector/data/repositories/auth_repository.dart
 import 'package:pbl_skin_problem_detector/data/repositories/scan_repository.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth.dart';
 import 'package:pbl_skin_problem_detector/data/services/gea_diagnosis_service.dart';
+import 'package:pbl_skin_problem_detector/data/services/ml/ml.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_theme.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -33,7 +34,11 @@ class _SkinProblemDetectorAppState extends State<SkinProblemDetectorApp> {
   void initState() {
     super.initState();
     _authRepository = AuthRepository(AuthService());
-    _scanRepository = ScanRepository(GeaDiagnosisService());
+    // Satu ApiClient dipakai bersama: JWT dari login otomatis ikut ke /ml/predict.
+    _scanRepository = ScanRepository(
+      GeaDiagnosisService(),
+      mlPredict: MlPredict(_authRepository.api),
+    );
     _authCubit = AuthCubit(_authRepository);
     _scanCubit = ScanCubit(_scanRepository);
     _router = createRouter(_authCubit);

@@ -161,6 +161,24 @@ Agent rules:
 - Protected → `auth: true`.
 - Share one `ApiClient` between auth and other services so the token is reused.
 
+### File uploads (`postMultipart`)
+
+For endpoints that take files (currently only `POST /ml/predict`), use
+`postMultipart`. It maps a form field to a list of absolute file paths and drops
+the JSON `Content-Type` so `http` can set the multipart boundary.
+
+```dart
+final res = await api.postMultipart(
+  '/ml/predict',
+  files: {'files': ['/data/user/0/.../front.jpg']}, // field name from OpenAPI
+  auth: true,
+  timeout: const Duration(seconds: 60),
+);
+```
+
+Reference file: `ml/ml_predict.dart`. It also defines the `MlPredictor`
+interface so repositories/tests can swap in a fake predictor without HTTP.
+
 ---
 
 ## 5. Full example — `auth/` domain
@@ -253,7 +271,7 @@ Reference file: `scan_status.dart` (`auth: true` on `api.get`).
 2. [ ] Note public vs protected; note success and error status codes.
 3. [ ] Create / pick a domain folder under `mobile/lib/data/services/<domain>/`.
 4. [ ] Add `<domain>_<action>.dart` (one endpoint per file).
-5. [ ] Use `ApiClient` (`post`/`get`, `auth: true` if protected).
+5. [ ] Use `ApiClient` (`post`/`get`, `postMultipart` for files, `auth: true` if protected).
 6. [ ] JSON body keys = OpenAPI snake_case; parse the response into a Dart model.
 7. [ ] Export from barrel `<domain>.dart`; wire via `<domain>_service.dart` → repository → cubit.
 8. [ ] Do not duplicate the base URL; do not hardcode secrets (`JWT`, DB, Google client secret).

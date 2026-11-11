@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 
 from app.core.config import get_settings
-from app.routers import auth, items, users
+from app.routers import auth, items, ml, users
 
 settings = get_settings()
 
@@ -13,7 +13,8 @@ app = FastAPI(
         "DermaScan backend API for facial skin-condition analysis. "
         "Public: POST /auth/login, POST /auth/register, POST /auth/google, GET /health. "
         "Protected routes require Authorization: Bearer <access_token> "
-        "(Authorize in Swagger). Users and items are placeholders."
+        "(Authorize in Swagger). POST /ml/predict runs the shipped CNN on 1-3 face "
+        "photos and returns a GEA grade. Users and items are placeholders."
     ),
     openapi_tags=[
         {
@@ -30,6 +31,13 @@ app = FastAPI(
             "name": "items",
             "description": "Protected. Placeholder status endpoint only.",
         },
+        {
+            "name": "ml",
+            "description": (
+                "Protected. Acne severity prediction with the shipped TFLite CNN "
+                "(classes IGA0-IGA4 mapped to GEA 0-4)."
+            ),
+        },
         {"name": "system", "description": "Public service health (no auth)."},
     ],
     debug=settings.debug,
@@ -38,6 +46,7 @@ app = FastAPI(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(items.router)
+app.include_router(ml.router)
 
 
 @app.get("/health", tags=["system"])

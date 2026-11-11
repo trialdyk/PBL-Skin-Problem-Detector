@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
 import 'package:pbl_skin_problem_detector/data/models/interview_answers.dart';
+import 'package:pbl_skin_problem_detector/data/models/result_source.dart';
 import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
 import 'package:pbl_skin_problem_detector/data/repositories/scan_repository.dart';
 
@@ -235,11 +236,21 @@ class ScanCubit extends Cubit<ScanState> {
   Future<void> _runDiagnosis() async {
     emit(state.copyWith(phase: ScanPhase.diagnosing, clearError: true));
     try {
-      await _repository.diagnose();
+      final result = await _repository.diagnose();
       emit(state.copyWith(
         session: _repository.session,
         phase: ScanPhase.result,
       ));
+
+      // Foto ada tapi hasilnya rule-based = CNN gagal; beri tahu pengguna
+      // supaya hasil tidak disangka berasal dari analisis foto.
+      if (result.source == ResultSource.ruleBased &&
+          _repository.session.photoPaths.isNotEmpty) {
+        await _pushBot(
+          'Analisis foto sedang tidak tersedia, jadi hasil ini memakai '
+          'jawaban interview Anda.',
+        );
+      }
     } catch (_) {
       emit(state.copyWith(
         phase: ScanPhase.interviewing,

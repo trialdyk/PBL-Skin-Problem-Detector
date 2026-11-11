@@ -1,0 +1,6 @@
+# Inference runtime for POST /ml/predict (acne severity, IGA0-IGA4).
+# ai-edge-litert ships small wheels; ml_service falls back to TensorFlow when the
+# LiteRT package is unavailable in the environment.
+ai-edge-litert==2.3.0
+numpy==2.2.6
+pillow==12.3.0

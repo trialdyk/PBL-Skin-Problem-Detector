@@ -3,11 +3,12 @@
 Dokumentasi teknis untuk aplikasi **SkinScan ID** (nama paket: `pbl_skin_problem_detector`).
 
 Aplikasi Flutter untuk mendeteksi masalah kulit (jerawat) berdasarkan **skala GEA
-(Global Evaluation of Acne)** 0–5. Autentikasi sudah memakai backend FastAPI
-(email/kata sandi + Google Sign-In, JWT Bearer), sedangkan **diagnosa masih
-rule-based** dari jawaban interview; foto wajah belum dianalisis dengan model ML
-— ML Kit baru dipakai untuk *deteksi wajah* saat pengambilan foto (kualitas &
-sudut), bukan untuk klasifikasi lesi.
+(Global Evaluation of Acne)** 0–5. Autentikasi memakai backend FastAPI
+(email/kata sandi + Google Sign-In, JWT Bearer), dan **diagnosa memakai CNN di
+backend** (`POST /ml/predict`, 1–3 foto → grade GEA 0–4) dengan **fallback
+rule-based** dari jawaban interview bila inferensi gagal. ML Kit tetap dipakai
+untuk *deteksi wajah* saat pengambilan foto (kualitas & sudut), bukan untuk
+klasifikasi lesi.
 
 > ⚠️ Hasil bersifat informatif, **bukan** pengganti diagnosis dokter.
 
@@ -24,6 +25,7 @@ sudut), bukan untuk klasifikasi lesi.
 | Navigasi | `go_router` |
 | Kamera / galeri | `camera`, `image_picker` |
 | Deteksi wajah | `google_mlkit_face_detection` |
+| Inferensi | `POST /ml/predict` di backend (CNN TFLite), fallback rule-based |
 | Font | Plus Jakarta Sans (`google_fonts`) |
 | Entry point | `lib/main.dart` |
 
@@ -53,11 +55,12 @@ sudut), bukan untuk klasifikasi lesi.
 - Alternatif unggah 3 foto dari galeri.
 - Interview singkat 5 pertanyaan (chat) — bisa dilewati.
 - Hasil skala GEA 0–5 dengan badge, bar skala, dan penjelasan.
+- Analisis foto dengan CNN di backend: 3 foto dikirim ke `POST /ml/predict`
+  (multipart, Bearer JWT), grade = mean softmax → GEA 0–4. Kalau gagal,
+  otomatis fallback rule-based dan hasilnya ditandai `ResultSource.ruleBased`.
 
 **Belum ada (rencana):**
 
-- Analisis citra lesi dengan model ML (saat ini rule-based dari interview; file
-  `.tflite` sudah tersedia di `machine-learning/models/` tetapi belum dipasang).
 - Layar registrasi di aplikasi.
 - Penyimpanan riwayat permanen (sesi hanya di memori; token tidak di-persist).
 - Endpoint scan/riwayat/artikel di backend.

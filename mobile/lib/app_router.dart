@@ -13,6 +13,7 @@ import 'package:pbl_skin_problem_detector/presentation/screens/diagnosis_screen.
 import 'package:pbl_skin_problem_detector/presentation/screens/home_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/interview_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/login_screen.dart';
+import 'package:pbl_skin_problem_detector/presentation/screens/register_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/privacy_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/scan_capture_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/scan_confirm_screen.dart';
@@ -23,7 +24,14 @@ import 'package:pbl_skin_problem_detector/presentation/screens/terms_screen.dart
 import 'package:pbl_skin_problem_detector/presentation/screens/welcome_screen.dart';
 
 GoRouter createRouter(AuthCubit authCubit) {
-  const publicRoutes = {'/splash', '/welcome', '/login', '/terms', '/privacy'};
+  const publicRoutes = {
+    '/splash',
+    '/welcome',
+    '/login',
+    '/register',
+    '/terms',
+    '/privacy',
+  };
 
   return GoRouter(
     initialLocation: '/splash',
@@ -46,24 +54,20 @@ GoRouter createRouter(AuthCubit authCubit) {
         path: '/welcome',
         builder: (context, state) => const WelcomeScreen(),
       ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
       ),
-      GoRoute(
-        path: '/terms',
-        builder: (context, state) => const TermsScreen(),
-      ),
+      GoRoute(path: '/terms', builder: (context, state) => const TermsScreen()),
       GoRoute(
         path: '/privacy',
         builder: (context, state) => const PrivacyScreen(),
       ),
       GoRoute(
         path: '/home',
-        builder: (context, state) => BlocProvider(
-          create: (_) => HomeCubit(),
-          child: const HomeScreen(),
-        ),
+        builder: (context, state) =>
+            BlocProvider(create: (_) => HomeCubit(), child: const HomeScreen()),
       ),
       GoRoute(
         path: '/articles/detail',
@@ -75,8 +79,7 @@ GoRouter createRouter(AuthCubit authCubit) {
                 : const ArticleItem(
                     category: 'Info',
                     title: 'Artikel tidak ditemukan',
-                    body:
-                        'Kembali dan pilih artikel dari daftar untuk melihat detail.',
+                    body: 'Kembali dan pilih artikel dari daftar untuk melihat detail.',
                     readTime: '-',
                     image: 'assets/images/acne_people.png',
                   ),

@@ -62,6 +62,7 @@ app/
 ├── schemas/           # Pydantic: bentuk request dan respons
 ├── services/          # Logika bisnis dan query database
 ├── models/            # ORM SQLAlchemy; diekspor di models/__init__.py
+├── ml/artifacts/      # Model TFLite + labels + meta.json (bukan kode; di-commit)
 ├── core/              # config.py (Settings), security.py (hash password, JWT)
 ├── db/                # database.py (engine, session, Base), seed.py, migrations/
 └── internal/          # Cadangan untuk endpoint admin; jangan dipakai dulu
@@ -175,6 +176,15 @@ Contoh acuan: `POST /auth/login` (`routers/auth.py`, `schemas/auth.py`,
   untuk semua orang. Setelah menambah folder baru, cek dengan `git status` atau `git check-ignore -v <path>`.
 - **Gaya kode.** Type hint di semua fungsi, `X | None` bukan `Optional[X]`,
   docstring singkat di fungsi publik, tanpa komentar yang hanya mengulang kode.
+- **Inferensi ML.** Model ada di `app/ml/artifacts/` (bukan `models/`, folder itu
+  di-ignore). Kontrak model: input `[1,160,160,3]` float32 piksel **0–255**,
+  output softmax 5 kelas `IGA0`–`IGA4`. Jangan menambah `/255` di service —
+  `Rescaling` ada di dalam model. Interpreter TFLite tidak thread-safe: akses
+  lewat `ml_service` (`threading.Lock`), jangan membuat `Interpreter` baru per
+  request. Dependensi inferensi ada di `requirements-ml.txt` (bukan
+  `requirements.txt`), dan `ai-edge-litert` diutamakan di atas TensorFlow.
+  Setelah mengubah model/preprocessing, jalankan `pytest tests/test_ml.py`
+  (golden test akan gagal bila preprocessing bergeser).
 - **Sebelum menganggap selesai**, jalankan `pytest` dan baca hasilnya. Jangan
   klaim "sudah jalan" untuk hal yang butuh Postgres kalau Postgres tidak dinyalakan.
 

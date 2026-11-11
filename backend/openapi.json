@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DermaScan Backend",
-    "description": "DermaScan backend API for facial skin-condition analysis. Public: POST /auth/login, POST /auth/register, POST /auth/google, GET /health. Protected routes require Authorization: Bearer <access_token> (Authorize in Swagger). Users and items are placeholders.",
+    "description": "DermaScan backend API for facial skin-condition analysis. Public: POST /auth/login, POST /auth/register, POST /auth/google, GET /health. Protected routes require Authorization: Bearer <access_token> (Authorize in Swagger). POST /ml/predict runs the shipped CNN on 1-3 face photos and returns a GEA grade. Users and items are placeholders.",
     "version": "0.1.0"
   },
   "paths": {
@@ -274,6 +274,93 @@
         ]
       }
     },
+    "/ml/predict": {
+      "post": {
+        "tags": [
+          "ml"
+        ],
+        "summary": "Predict acne severity (GEA 0-4) from 1-3 face photos",
+        "description": "Run the shipped CNN on the photos and average their probabilities.\n\nPhotos are processed in memory and never stored. ``aggregate.grade`` is the\nGEA value the app displays; grade 5 cannot be produced because the model only\nhas classes ``IGA0``-``IGA4``.",
+        "operationId": "predict_ml_predict_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_predict_ml_predict_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlPredictResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty file, undecodable image, or more than three photos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired, or inactive-user bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "An uploaded photo exceeds ML_MAX_UPLOAD_MB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Inference runtime or model artifact is unavailable on the server.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -303,6 +390,40 @@
   },
   "components": {
     "schemas": {
+      "AggregatePrediction": {
+        "properties": {
+          "top_label": {
+            "type": "string",
+            "title": "Top Label"
+          },
+          "grade": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Grade"
+          },
+          "grade_label": {
+            "type": "string",
+            "title": "Grade Label"
+          },
+          "predictions": {
+            "items": {
+              "$ref": "#/components/schemas/ClassScore"
+            },
+            "type": "array",
+            "title": "Predictions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "top_label",
+          "grade",
+          "grade_label",
+          "predictions"
+        ],
+        "title": "AggregatePrediction",
+        "description": "Element-wise mean prediction across the uploaded photos."
+      },
       "AuthResponse": {
         "properties": {
           "access_token": {
@@ -330,6 +451,54 @@
         ],
         "title": "AuthResponse",
         "description": "Bearer token plus the authenticated user (login and register)."
+      },
+      "Body_predict_ml_predict_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "Front, left and right selfies (1-3 files, max 10 MB each)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_predict_ml_predict_post"
+      },
+      "ClassScore": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Model class name, e.g. IGA2."
+          },
+          "grade": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Grade",
+            "description": "GEA grade for this class."
+          },
+          "probability": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Probability"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "grade",
+          "probability"
+        ],
+        "title": "ClassScore",
+        "description": "Probability of one model class (IGA) and the GEA grade it maps to."
       },
       "ErrorResponse": {
         "properties": {
@@ -394,6 +563,56 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "ImagePrediction": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename",
+            "description": "Original upload filename."
+          },
+          "top_label": {
+            "type": "string",
+            "title": "Top Label",
+            "description": "Most likely IGA class."
+          },
+          "grade": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Grade",
+            "description": "GEA grade of the top class."
+          },
+          "grade_label": {
+            "type": "string",
+            "title": "Grade Label",
+            "description": "Indonesian grade label shown by the app."
+          },
+          "predictions": {
+            "items": {
+              "$ref": "#/components/schemas/ClassScore"
+            },
+            "type": "array",
+            "title": "Predictions",
+            "description": "All classes, in model order."
+          },
+          "inference_ms": {
+            "type": "number",
+            "title": "Inference Ms",
+            "description": "Preprocessing plus inference time."
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "top_label",
+          "grade",
+          "grade_label",
+          "predictions",
+          "inference_ms"
+        ],
+        "title": "ImagePrediction",
+        "description": "Prediction for a single uploaded photo."
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -437,6 +656,35 @@
             "password": "skinscan123"
           }
         ]
+      },
+      "MlPredictResponse": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "Model identifier."
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ImagePrediction"
+            },
+            "type": "array",
+            "title": "Images",
+            "description": "Per-photo predictions."
+          },
+          "aggregate": {
+            "$ref": "#/components/schemas/AggregatePrediction",
+            "description": "Mean probabilities; this is the grade the app displays."
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "images",
+          "aggregate"
+        ],
+        "title": "MlPredictResponse",
+        "description": "Body of a successful ``POST /ml/predict`` response."
       },
       "RegisterRequest": {
         "properties": {
@@ -582,6 +830,10 @@
     {
       "name": "items",
       "description": "Protected. Placeholder status endpoint only."
+    },
+    {
+      "name": "ml",
+      "description": "Protected. Acne severity prediction with the shipped TFLite CNN (classes IGA0-IGA4 mapped to GEA 0-4)."
     },
     {
       "name": "system",

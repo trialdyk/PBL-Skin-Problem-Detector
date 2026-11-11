@@ -16,6 +16,7 @@ Aplikasi Flutter untuk mendeteksi tingkat keparahan jerawat berdasarkan skala
 | Kamera / galeri | `camera`, `image_picker` |
 | Deteksi wajah | `google_mlkit_face_detection` (kualitas foto, bukan klasifikasi lesi) |
 | Autentikasi | HTTP ke backend FastAPI (`http`) + `google_sign_in` |
+| Inferensi | HTTP multipart ke `POST /ml/predict` (CNN TFLite di backend) |
 | Font | Plus Jakarta Sans (`google_fonts`) |
 | Entry point | `lib/main.dart` |
 
@@ -62,7 +63,7 @@ Akun demo (dari `python -m app.db.seed` di backend) — `pengguna@gmail.com` /
 
 ```text
 lib/
-├── data/          # models, repositories, services (auth/ dan scan/)
+├── data/          # models, repositories, services (auth/, ml/, scan/)
 ├── presentation/  # screens, widgets, theme
 ├── business/      # cubit/ (state management) — bloc/ masih placeholder
 ├── core/          # api_config.dart (base URL + Google client ID)
@@ -107,18 +108,21 @@ kode: [`../docs/referensi-data.md`](../docs/referensi-data.md#pemetaan-label-mod
 - Pengambilan 3 selfie (depan, kiri, kanan) lewat kamera dengan pemandu kualitas
   berbasis ML Kit (cahaya, wajah, sudut), plus alternatif unggah dari galeri.
 - Interview 5 pertanyaan (chat) yang bisa dilewati.
-- Hasil skala GEA 0–5 (badge, bar skala, penjelasan).
+- Hasil skala GEA 0–5 (badge, bar skala, penjelasan) dari CNN di backend:
+  3 foto dikirim ke `POST /ml/predict` (`lib/data/services/ml/`), grade diambil
+  dari `aggregate` (mean softmax 3 foto). Hasil ditandai `ResultSource.ml`.
+- Fallback otomatis: kalau ML gagal (offline / `503` / belum ada foto), grade
+  dihitung rule-based dari interview (`gea_diagnosis_service.dart`) dan layar
+  hasil menampilkan catatan bahwa foto tidak dianalisis.
 
 **Belum ada**
 
-- Klasifikasi lesi dengan model ML — hasil masih dihitung rule-based dari
-  interview (`lib/data/services/gea_diagnosis_service.dart`). File `.tflite`
-  sudah tersedia di `../machine-learning/models/`.
 - Layar registrasi (service `AuthRegister` dan endpoint backend sudah siap,
   tetapi tombol "Daftar Sekarang" masih menampilkan toast).
 - Penyimpanan permanen: sesi scan hanya di memori dan token tidak di-persist,
   jadi menutup aplikasi berarti harus login ulang.
 - Riwayat diagnosa, lupa kata sandi, dan verifikasi email.
+- Inferensi on-device (model hanya berjalan di backend, bukan di HP).
 
 ## Referensi Lain
 

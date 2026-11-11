@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:pbl_skin_problem_detector/data/models/gea_result.dart';
+import 'package:pbl_skin_problem_detector/data/models/result_source.dart';
 import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
 
 enum ScanPhase {
@@ -50,6 +51,10 @@ class ScanState extends Equatable {
 
   GeaResult? get result => session.result;
   bool get hasAllPhotos => session.hasAllPhotos;
+
+  /// Asal hasil terakhir: [ResultSource.ml] kalau CNN berhasil, [ResultSource.ruleBased]
+  /// kalau fallback interview, `null` sebelum ada hasil.
+  ResultSource? get resultSource => session.result?.source;
 
   ScanState copyWith({
     ScanPhase? phase,

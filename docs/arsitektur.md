@@ -47,7 +47,10 @@ widget lewat `MultiBlocProvider`.
 ```dart
 // main.dart (ringkas)
 _authRepository = AuthRepository(AuthService());
-_scanRepository = ScanRepository(GeaDiagnosisService());
+_scanRepository = ScanRepository(
+  GeaDiagnosisService(),
+  mlPredict: MlPredict(_authRepository.api), // ApiClient yang sama → Bearer ikut
+);
 _authCubit      = AuthCubit(_authRepository);
 _scanCubit      = ScanCubit(_scanRepository);
 _router         = createRouter(_authCubit);
@@ -140,6 +143,7 @@ sequenceDiagram
     participant U as UI (InterviewScreen)
     participant C as ScanCubit
     participant R as ScanRepository
+    participant P as MlPredict (POST /ml/predict)
     participant S as GeaDiagnosisService
     participant M as GeaScale
 
@@ -149,9 +153,15 @@ sequenceDiagram
     Note over C: setelah pertanyaan ke-5
     C->>C: _runDiagnosis()
     C->>R: diagnose()
-    R->>S: diagnose(answers)
-    S->>M: GeaResult.fromGrade(grade)
-    S-->>R: GeaResult
+    R->>P: call(photoPaths) — 1–3 foto, Bearer JWT
+    alt CNN berhasil
+        P-->>R: MlPrediction (grade GEA)
+        R->>M: GeaResult.fromGrade(grade, source: ml)
+    else gagal / tanpa foto
+        R->>S: diagnose(answers)
+        S->>M: GeaResult.fromGrade(grade)
+        S-->>R: GeaResult (source: ruleBased)
+    end
     R-->>C: GeaResult
     C-->>U: emit(phase = result)
 ```
@@ -161,7 +171,8 @@ sequenceDiagram
 - **Repository** = pemilik state sesi (in-memory) + orkestrasi service.
   - `AuthRepository`: menyimpan `_currentUser`, meneruskan login ke `AuthService`.
   - `ScanRepository`: menyimpan `_session` (`ScanSession`), mengatur foto,
-    interview, dan memanggil diagnosa.
+    interview, lalu diagnosa: `POST /ml/predict` (CNN) → fallback rule-based
+    bila gagal/tanpa foto.
 - **Service** = logika murni, akses platform, atau akses jaringan — tanpa
   menyimpan state aplikasi.
   - `api_client.dart` — satu `http.Client` bersama; menambahkan header
@@ -172,11 +183,14 @@ sequenceDiagram
     (`GoogleSignIn` → `POST /auth/google`). `auth_service.dart` adalah facade
     yang menyimpan token hasil login ke `ApiClient`; `auth_exception.dart`
     memuat `AuthException`.
+  - `ml/` — `ml_predict.dart` (`POST /ml/predict`, multipart 1–3 foto, butuh
+    `auth: true`), `ml_prediction.dart` (`MlPrediction`), `ml_exception.dart`.
+    Dipanggil `ScanRepository` saat diagnosa.
   - `scan/` — contoh domain endpoint **protected** (`GET /users/status`) dan
     referensi pola `auth: true`. Belum dipanggil layar mana pun; lihat
     [fetching_api.md](fetching_api.md) §6.
-  - `GeaDiagnosisService` — hitung grade GEA (rule-based, **bukan** analisis
-    citra).
+  - `GeaDiagnosisService` — hitung grade GEA rule-based (**bukan** analisis
+    citra); sekarang berperan sebagai fallback bila CNN gagal.
   - `FaceScanAnalyzer` — ML Kit: cahaya, keberadaan wajah, sudut.
   - `ImagePickService` — ambil gambar dari kamera/galeri.
 

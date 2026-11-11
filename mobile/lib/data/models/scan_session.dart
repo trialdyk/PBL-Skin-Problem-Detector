@@ -22,6 +22,12 @@ class ScanSession extends Equatable {
   bool get hasAllPhotos =>
       frontPath != null && leftPath != null && rightPath != null;
 
+  /// Foto yang sudah diambil, urut depan → kiri → kanan.
+  ///
+  /// `POST /ml/predict` menerima 1–3 berkas, jadi daftar ini bisa lebih pendek
+  /// dari tiga bila pengguna baru mengambil sebagian.
+  List<String> get photoPaths => [?frontPath, ?leftPath, ?rightPath];
+
   String? pathFor(SelfieAngle angle) {
     return switch (angle) {
       SelfieAngle.front => frontPath,
