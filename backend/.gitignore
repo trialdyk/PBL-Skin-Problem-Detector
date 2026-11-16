@@ -29,6 +29,7 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
+tests/reports/
 
 # IDE / editor
 .idea/
