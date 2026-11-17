@@ -21,6 +21,11 @@ FullName = Annotated[
     StringConstraints(strip_whitespace=True, min_length=1, max_length=255),
 ]
 
+VerificationCode = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=6, max_length=6, pattern=r"^\d{6}$"),
+]
+
 
 class LoginRequest(BaseModel):
     """Fields of the mobile login form."""
@@ -73,6 +78,29 @@ class RegisterRequest(BaseModel):
     accepted_privacy: StrictBool = Field(description="Kebijakan Privasi, must be true.")
 
 
+class VerifyEmailRequest(BaseModel):
+    """Confirm registration with the 6-digit code from email."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"email": "budi@gmail.com", "code": "123456"}]
+        }
+    )
+
+    email: Email
+    code: VerificationCode = Field(description="Six-digit OTP from the verification email.")
+
+
+class ResendVerificationRequest(BaseModel):
+    """Ask for a new verification code."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"email": "budi@gmail.com"}]}
+    )
+
+    email: Email
+
+
 class GoogleLoginRequest(BaseModel):
     """Google Sign-In payload from the mobile app (``id_token`` + consent)."""
 
@@ -107,12 +135,24 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     full_name: str | None
+    email_verified: bool = True
 
 
 class AuthResponse(BaseModel):
-    """Bearer token plus the authenticated user (login and register)."""
+    """Bearer token plus the authenticated user (login / verify / Google)."""
 
     access_token: str
     token_type: str = "bearer"
     expires_in: int
     user: UserResponse
+
+
+class RegisterPendingResponse(BaseModel):
+    """Returned by ``POST /auth/register`` and ``POST /auth/resend-verification``.
+
+    No JWT yet — the client must call ``POST /auth/verify-email`` with the OTP.
+    """
+
+    email: str
+    message: str
+    expires_in: int = Field(description="Seconds until the current code expires.")

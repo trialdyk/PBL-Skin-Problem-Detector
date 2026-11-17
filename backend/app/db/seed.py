@@ -46,6 +46,7 @@ def seed_demo_user(*, force: bool = False) -> None:
                 password_hash=hash_password(DEMO_PASSWORD),
                 full_name=DEMO_FULL_NAME,
                 auth_provider="password",
+                email_verified=True,
             )
         )
         db.commit()

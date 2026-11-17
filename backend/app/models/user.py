@@ -1,4 +1,4 @@
-"""User ORM model (schema: migration 20260316_0001 + 20261105_0002)."""
+"""User ORM model (schema: migrations through 20261117_0003)."""
 
 import uuid
 from datetime import datetime
@@ -14,6 +14,7 @@ class User(Base):
 
     Password accounts have ``auth_provider='password'`` and a hash.
     Google accounts may have ``password_hash=None`` until they set a password.
+    Password sign-ups start with ``email_verified=False`` until OTP confirm.
     """
 
     __tablename__ = "users"
@@ -24,6 +25,12 @@ class User(Base):
     full_name: Mapped[str | None] = mapped_column(String(255))
     auth_provider: Mapped[str] = mapped_column(String(32), server_default="password")
     google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, server_default=true())
+    email_verification_code_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    email_verification_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

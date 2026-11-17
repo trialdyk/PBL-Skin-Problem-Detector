@@ -36,6 +36,7 @@ def db() -> Generator[Session, None, None]:
             email=DEMO_EMAIL,
             password_hash=hash_password(DEMO_PASSWORD),
             full_name="Pengguna Demo",
+            email_verified=True,
         )
     )
     session.commit()

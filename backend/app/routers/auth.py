@@ -12,14 +12,19 @@ from app.schemas.auth import (
     ErrorResponse,
     GoogleLoginRequest,
     LoginRequest,
+    RegisterPendingResponse,
     RegisterRequest,
+    ResendVerificationRequest,
     UserResponse,
+    VerifyEmailRequest,
 )
-from app.services import auth_service
+from app.services import auth_service, email_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 CONSENT_REQUIRED_MESSAGE = "Centang Syarat & Ketentuan serta Kebijakan Privasi terlebih dahulu."
+REGISTER_PENDING_MESSAGE = "Kode verifikasi telah dikirim ke email Anda."
+RESEND_MESSAGE = "Jika email terdaftar dan belum diverifikasi, kode baru telah dikirim."
 
 
 def _require_consent(accepted_terms: bool, accepted_privacy: bool) -> None:
@@ -50,19 +55,30 @@ def _auth_response(user: User) -> AuthResponse:
             "model": ErrorResponse,
             "description": "Wrong email or password, or the account is inactive.",
         },
+        403: {
+            "model": ErrorResponse,
+            "description": "Credentials OK but email is not verified yet.",
+        },
     },
 )
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
     """Log in with email and password.
 
-    The 400 and 401 ``detail`` strings are Indonesian and shown as-is by the app.
+    The 400 / 401 / 403 ``detail`` strings are Indonesian and shown as-is by the app.
     The consent check runs before the credential check, so unaccepted terms
     return 400 even when the password is wrong. 422 means the body is malformed
     and its ``detail`` is a list, not a string.
     """
     _require_consent(payload.accepted_terms, payload.accepted_privacy)
 
-    user = auth_service.authenticate(db, payload.email, payload.password)
+    try:
+        user = auth_service.authenticate(db, payload.email, payload.password)
+    except auth_service.EmailNotVerifiedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from None
+
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -76,7 +92,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
 @router.post(
     "/register",
     status_code=status.HTTP_201_CREATED,
-    summary="Create an account",
+    summary="Create an account (sends email verification code)",
     responses={
         400: {
             "model": ErrorResponse,
@@ -86,26 +102,107 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
             "model": ErrorResponse,
             "description": "The email already has an account.",
         },
+        503: {
+            "model": ErrorResponse,
+            "description": "SMTP failed to send the verification email.",
+        },
     },
 )
-def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthResponse:
-    """Create an account and log it in, returning the same body as login.
+def register(
+    payload: RegisterRequest,
+    db: Session = Depends(get_db),
+) -> RegisterPendingResponse:
+    """Create an unverified account and email a 6-digit OTP.
 
-    Check order: 422 (malformed body) before 400 (consent not accepted) before
-    409 (email taken). A 409 reveals that the email is registered; that is
-    inherent to sign-up and is why login uses a single generic message instead.
+    No bearer token is issued here. The app must call ``POST /auth/verify-email``
+    with the code, which returns the same ``AuthResponse`` shape as login.
     """
     _require_consent(payload.accepted_terms, payload.accepted_privacy)
 
     try:
-        user = auth_service.register(db, payload.email, payload.password, payload.full_name)
+        user, expires_in = auth_service.register(
+            db, payload.email, payload.password, payload.full_name
+        )
     except auth_service.EmailAlreadyRegisteredError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email sudah terdaftar. Silakan masuk.",
         ) from None
+    except email_service.EmailSendError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from None
 
+    return RegisterPendingResponse(
+        email=user.email,
+        message=REGISTER_PENDING_MESSAGE,
+        expires_in=expires_in,
+    )
+
+
+@router.post(
+    "/verify-email",
+    summary="Confirm email with the 6-digit code and log in",
+    responses={
+        400: {
+            "model": ErrorResponse,
+            "description": "Wrong/expired code, or email already verified.",
+        },
+    },
+)
+def verify_email(
+    payload: VerifyEmailRequest,
+    db: Session = Depends(get_db),
+) -> AuthResponse:
+    """Exchange a valid OTP for a bearer JWT."""
+    try:
+        user = auth_service.verify_email(db, payload.email, payload.code)
+    except auth_service.VerificationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        ) from None
     return _auth_response(user)
+
+
+@router.post(
+    "/resend-verification",
+    summary="Resend the email verification code",
+    responses={
+        400: {
+            "model": ErrorResponse,
+            "description": "Email already verified.",
+        },
+        503: {
+            "model": ErrorResponse,
+            "description": "SMTP failed to send the verification email.",
+        },
+    },
+)
+def resend_verification(
+    payload: ResendVerificationRequest,
+    db: Session = Depends(get_db),
+) -> RegisterPendingResponse:
+    """Send a new OTP. Unknown emails get a generic success body (no enumeration)."""
+    try:
+        expires_in = auth_service.resend_verification(db, payload.email)
+    except auth_service.VerificationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        ) from None
+    except email_service.EmailSendError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from None
+
+    return RegisterPendingResponse(
+        email=payload.email,
+        message=RESEND_MESSAGE,
+        expires_in=expires_in,
+    )
 
 
 @router.post(
@@ -125,16 +222,14 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
 def login_google(payload: GoogleLoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
     """Exchange a Google ``id_token`` for a DermaScan bearer JWT.
 
-    Public endpoint (no Authorization header). The mobile app must obtain the
-    token with ``serverClientId`` set to the same Web client as ``GOOGLE_CLIENT_ID``.
-    Consent is checked before token verification.
+    Public endpoint (no Authorization header). Google accounts skip email OTP
+    (treated as already verified). Consent is checked before token verification.
     """
     _require_consent(payload.accepted_terms, payload.accepted_privacy)
 
     try:
         user = auth_service.authenticate_google(db, payload.id_token)
     except auth_service.GoogleSignInError as exc:
-        # Log the real cause on the server; keep a single user-facing message.
         import logging
 
         logging.getLogger(__name__).warning("Google sign-in rejected: %s", exc)

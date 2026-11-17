@@ -41,11 +41,29 @@ class Settings(BaseSettings):
     ml_input_size: int = 160
     ml_max_upload_mb: int = 10
 
+    # SMTP — used to send registration verification codes (Gmail app password, etc.).
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_pass: str = ""
+    smtp_from: str = ""
+    # How long a 6-digit verification code stays valid.
+    email_verification_expire_minutes: int = 15
+
     @model_validator(mode="after")
     def _require_jwt_secret_outside_development(self) -> "Settings":
         if self.app_env != "development" and self.jwt_secret_key == _DEV_JWT_SECRET:
             raise ValueError("JWT_SECRET_KEY must be set outside development")
         return self
+
+    @property
+    def smtp_sender(self) -> str:
+        """From-address for outbound mail (falls back to SMTP_USER)."""
+        return (self.smtp_from or self.smtp_user).strip()
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.smtp_host and self.smtp_user and self.smtp_pass and self.smtp_sender)
 
     @computed_field  # type: ignore[prop-decorator]
     @property
