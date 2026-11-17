@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth.dart';
+import 'package:pbl_skin_problem_detector/data/services/user/user.dart';
 import 'package:pbl_skin_problem_detector/main.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -23,8 +24,14 @@ Future<void> _loginToProfile(WidgetTester tester) async {
 }
 
 void main() {
-  setUp(() => AuthService.mockRemoteAuth = true);
-  tearDown(() => AuthService.mockRemoteAuth = false);
+  setUp(() {
+    AuthService.mockRemoteAuth = true;
+    UserService.mockRemoteUser = true;
+  });
+  tearDown(() {
+    AuthService.mockRemoteAuth = false;
+    UserService.mockRemoteUser = false;
+  });
 
   testWidgets('ProfileScreen fokus pada edit nama, email, dan kata sandi', (
     tester,
@@ -79,6 +86,8 @@ void main() {
     );
     await tester.ensureVisible(find.text('Simpan Perubahan'));
     await tester.tap(find.text('Simpan Perubahan'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
 
     expect(find.text('Edit profil'), findsOneWidget);
