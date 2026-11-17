@@ -219,20 +219,35 @@ Body sent to the server (from `AuthLogin`):
 
 ### Register (`auth_register.dart` → `POST /auth/register`)
 
-Public. Schema: `RegisterRequest`. Response: `AuthResponse` (`201`).
+Public. Schema: `RegisterRequest`. Response: `RegisterPendingResponse` (`201`) —
+**no JWT yet**. A 6-digit OTP is emailed; then call verify.
 
 ```dart
-final user = await auth.register(
+final pending = await auth.register(
   email: 'budi@gmail.com',
   password: 'rahasia123',
   fullName: 'Budi Santoso',
   acceptedTerms: true,
 );
+// pending.email, pending.expiresIn
 ```
+
+### Verify email (`auth_verify_email.dart` → `POST /auth/verify-email`)
+
+Public. Schema: `VerifyEmailRequest`. Response: `AuthResponse` (`200`) with JWT.
+
+```dart
+final user = await auth.verifyEmail(email: pending.email, code: '123456');
+```
+
+Resend: `POST /auth/resend-verification` via `auth.resendVerification(email: ...)`.
+
+Unverified login returns **403** with an Indonesian `detail` — the app opens the
+OTP screen.
 
 ### Google (`auth_google.dart` → `POST /auth/google`)
 
-Public. Schema: `GoogleLoginRequest` (`id_token` + consent).
+Public. Schema: `GoogleLoginRequest` (`id_token` + consent). Google accounts skip OTP.
 
 ```dart
 final user = await auth.loginWithGoogle(acceptedTerms: true);
