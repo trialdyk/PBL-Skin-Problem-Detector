@@ -96,7 +96,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return BlocConsumer<AuthCubit, AuthState>(
       listener: (context, state) {
-        if (state.status == AuthStatus.authenticated) context.go('/home');
+        if (state.status == AuthStatus.authenticated) {
+          context.go('/home');
+        } else if (state.status == AuthStatus.pendingVerification) {
+          context.go(
+            '/verify-email',
+            extra: state.pendingEmail ?? _email.text.trim(),
+          );
+        }
       },
       builder: (context, state) {
         final loading = state.status == AuthStatus.loading;

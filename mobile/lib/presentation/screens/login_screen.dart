@@ -187,6 +187,11 @@ class _LoginScreenState extends State<LoginScreen> {
       listener: (context, state) {
         if (state.status == AuthStatus.authenticated) {
           context.go('/home');
+        } else if (state.status == AuthStatus.pendingVerification) {
+          context.go(
+            '/verify-email',
+            extra: state.pendingEmail ?? _emailController.text.trim(),
+          );
         }
       },
       builder: (context, state) {

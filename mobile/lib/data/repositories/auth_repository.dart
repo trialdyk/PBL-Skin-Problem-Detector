@@ -1,3 +1,4 @@
+import 'package:pbl_skin_problem_detector/data/models/register_pending.dart';
 import 'package:pbl_skin_problem_detector/data/models/user_model.dart';
 import 'package:pbl_skin_problem_detector/data/services/api_client.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth.dart';
@@ -11,7 +12,6 @@ class AuthRepository {
   UserModel? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
 
-  /// Shared API client (sudah berisi Bearer setelah login).
   ApiClient get api => _service.api;
 
   Future<UserModel> login({
@@ -30,20 +30,31 @@ class AuthRepository {
     return user;
   }
 
-  Future<UserModel> register({
+  Future<RegisterPending> register({
     required String email,
     required String password,
     required bool acceptedTerms,
     String? fullName,
-  }) async {
-    final user = await _service.register(
+  }) {
+    return _service.register(
       email: email,
       password: password,
       acceptedTerms: acceptedTerms,
       fullName: fullName,
     );
+  }
+
+  Future<UserModel> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
+    final user = await _service.verifyEmail(email: email, code: code);
     _currentUser = user;
     return user;
+  }
+
+  Future<RegisterPending> resendVerification({required String email}) {
+    return _service.resendVerification(email: email);
   }
 
   Future<UserModel> loginWithGoogle({required bool acceptedTerms}) async {
@@ -52,7 +63,6 @@ class AuthRepository {
     return user;
   }
 
-  /// Memperbarui nama dan email pengguna pada sesi aktif di memori aplikasi.
   UserModel? updateProfile({
     required String fullName,
     required String email,
@@ -70,7 +80,6 @@ class AuthRepository {
     return updated;
   }
 
-  /// Menyimpan pembaruan kata sandi pada sesi aktif (menunggu endpoint backend).
   bool changePassword({
     required String currentPassword,
     required String newPassword,

@@ -16,8 +16,6 @@ class AuthCubit extends Cubit<AuthState> {
     emit(state.copyWith(acceptedTerms: value, clearError: true));
   }
 
-  /// Menutup pesan galat (mis. panel "kata sandi salah") saat pengguna
-  /// kembali mengetik.
   void clearError() {
     if (state.errorMessage == null) return;
     emit(state.copyWith(clearError: true));
@@ -36,8 +34,24 @@ class AuthCubit extends Cubit<AuthState> {
         acceptedTerms: state.canSubmit,
         viaGoogle: viaGoogle,
       );
-      emit(state.copyWith(status: AuthStatus.authenticated, user: user));
+      emit(
+        state.copyWith(
+          status: AuthStatus.authenticated,
+          user: user,
+          clearPendingEmail: true,
+        ),
+      );
     } on AuthException catch (e) {
+      if (e.isEmailUnverified) {
+        emit(
+          state.copyWith(
+            status: AuthStatus.pendingVerification,
+            pendingEmail: email.trim().toLowerCase(),
+            errorMessage: e.message,
+          ),
+        );
+        return;
+      }
       emit(state.copyWith(status: AuthStatus.failure, errorMessage: e.message));
     } catch (_) {
       emit(
@@ -55,7 +69,13 @@ class AuthCubit extends Cubit<AuthState> {
       final user = await _repository.loginWithGoogle(
         acceptedTerms: state.canSubmit,
       );
-      emit(state.copyWith(status: AuthStatus.authenticated, user: user));
+      emit(
+        state.copyWith(
+          status: AuthStatus.authenticated,
+          user: user,
+          clearPendingEmail: true,
+        ),
+      );
     } on AuthException catch (e) {
       emit(state.copyWith(status: AuthStatus.failure, errorMessage: e.message));
     } catch (_) {
@@ -76,13 +96,20 @@ class AuthCubit extends Cubit<AuthState> {
     if (state.status == AuthStatus.loading) return;
     emit(state.copyWith(status: AuthStatus.loading, clearError: true));
     try {
-      final user = await _repository.register(
+      final pending = await _repository.register(
         fullName: fullName,
         email: email,
         password: password,
         acceptedTerms: state.canSubmit,
       );
-      emit(state.copyWith(status: AuthStatus.authenticated, user: user));
+      emit(
+        state.copyWith(
+          status: AuthStatus.pendingVerification,
+          pendingEmail: pending.email,
+          clearUser: true,
+          clearError: true,
+        ),
+      );
     } on AuthException catch (e) {
       emit(state.copyWith(status: AuthStatus.failure, errorMessage: e.message));
     } catch (_) {
@@ -95,82 +122,76 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  static final _emailPattern = RegExp(r'^[\w.+-]+@[\w-]+\.[\w.-]+$');
-
-  /// Memperbarui nama dan email pengguna pada sesi aktif.
-  bool updateProfile({required String fullName, required String email}) {
-    final trimmedName = fullName.trim();
-    final trimmedEmail = email.trim().toLowerCase();
-    if (trimmedName.isEmpty || trimmedName.length > 255) {
+  Future<void> verifyEmail({required String code}) async {
+    final email = state.pendingEmail;
+    if (email == null || email.isEmpty) {
       emit(
         state.copyWith(
-          errorMessage: trimmedName.isEmpty
-              ? 'Nama lengkap tidak boleh kosong.'
-              : 'Nama lengkap maksimal 255 karakter.',
+          status: AuthStatus.failure,
+          errorMessage: 'Email verifikasi tidak ditemukan. Daftar ulang.',
         ),
       );
-      return false;
+      return;
     }
-    if (trimmedEmail.isEmpty ||
-        trimmedEmail.length > 255 ||
-        !_emailPattern.hasMatch(trimmedEmail)) {
+    emit(state.copyWith(status: AuthStatus.loading, clearError: true));
+    try {
+      final user = await _repository.verifyEmail(email: email, code: code);
       emit(
         state.copyWith(
-          errorMessage: trimmedEmail.isEmpty
-              ? 'Email tidak boleh kosong.'
-              : 'Format email tidak valid.',
+          status: AuthStatus.authenticated,
+          user: user,
+          clearPendingEmail: true,
         ),
       );
-      return false;
+    } on AuthException catch (e) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.pendingVerification,
+          pendingEmail: email,
+          errorMessage: e.message,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          status: AuthStatus.pendingVerification,
+          pendingEmail: email,
+          errorMessage: 'Verifikasi gagal. Coba lagi.',
+        ),
+      );
     }
-
-    final updated = _repository.updateProfile(
-      fullName: trimmedName,
-      email: trimmedEmail,
-    );
-    if (updated == null) return false;
-    emit(state.copyWith(user: updated, clearError: true));
-    return true;
   }
 
-  /// Memperbarui kata sandi pengguna pada sesi aktif.
-  bool changePassword({
-    required String currentPassword,
-    required String newPassword,
-  }) {
-    if (currentPassword.isEmpty) {
+  Future<void> resendVerification() async {
+    final email = state.pendingEmail;
+    if (email == null || email.isEmpty) return;
+    emit(state.copyWith(status: AuthStatus.loading, clearError: true));
+    try {
+      await _repository.resendVerification(email: email);
       emit(
         state.copyWith(
-          errorMessage: 'Kata sandi saat ini tidak boleh kosong.',
+          status: AuthStatus.pendingVerification,
+          pendingEmail: email,
+          clearError: true,
         ),
       );
-      return false;
-    }
-    if (newPassword.length < 8 || newPassword.length > 128) {
+    } on AuthException catch (e) {
       emit(
         state.copyWith(
-          errorMessage: 'Kata sandi baru harus 8–128 karakter.',
+          status: AuthStatus.pendingVerification,
+          pendingEmail: email,
+          errorMessage: e.message,
         ),
       );
-      return false;
-    }
-    if (newPassword == currentPassword) {
+    } catch (_) {
       emit(
         state.copyWith(
-          errorMessage:
-              'Kata sandi baru harus berbeda dari kata sandi saat ini.',
+          status: AuthStatus.pendingVerification,
+          pendingEmail: email,
+          errorMessage: 'Gagal mengirim ulang kode.',
         ),
       );
-      return false;
     }
-
-    final ok = _repository.changePassword(
-      currentPassword: currentPassword,
-      newPassword: newPassword,
-    );
-    if (!ok) return false;
-    emit(state.copyWith(clearError: true));
-    return true;
   }
 
   void logout() {

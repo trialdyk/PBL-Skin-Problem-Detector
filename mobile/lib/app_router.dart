@@ -16,6 +16,7 @@ import 'package:pbl_skin_problem_detector/presentation/screens/home_screen.dart'
 import 'package:pbl_skin_problem_detector/presentation/screens/interview_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/login_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/register_screen.dart';
+import 'package:pbl_skin_problem_detector/presentation/screens/verify_email_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/privacy_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/scan_capture_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/scan_confirm_screen.dart';
@@ -31,6 +32,7 @@ GoRouter createRouter(AuthCubit authCubit) {
     '/welcome',
     '/login',
     '/register',
+    '/verify-email',
     '/terms',
     '/privacy',
   };
@@ -60,6 +62,14 @@ GoRouter createRouter(AuthCubit authCubit) {
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'] ??
+              (state.extra is String ? state.extra as String : null);
+          return VerifyEmailScreen(email: email);
+        },
       ),
       GoRoute(path: '/terms', builder: (context, state) => const TermsScreen()),
       GoRoute(
