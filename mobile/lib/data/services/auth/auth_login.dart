@@ -46,6 +46,7 @@ class AuthLogin {
     throw AuthException(
       _readDetail(response.body) ??
           'Email atau kata sandi salah. Periksa kembali.',
+      statusCode: response.statusCode,
     );
   }
 

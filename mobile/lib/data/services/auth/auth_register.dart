@@ -2,17 +2,17 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:pbl_skin_problem_detector/data/models/user_model.dart';
+import 'package:pbl_skin_problem_detector/data/models/register_pending.dart';
 import 'package:pbl_skin_problem_detector/data/services/api_client.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth_exception.dart';
 
-/// `POST /auth/register` — public (no Bearer). Returns same shape as login.
+/// `POST /auth/register` — public. Returns pending verification (no JWT yet).
 class AuthRegister {
   AuthRegister(this._api);
 
   final ApiClient _api;
 
-  Future<UserModel> call({
+  Future<RegisterPending> call({
     required String email,
     required String password,
     String? fullName,
@@ -36,10 +36,10 @@ class AuthRegister {
       );
     }
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
+    if (response.statusCode == 201) {
       final decoded = jsonDecode(response.body);
       if (decoded is Map<String, dynamic>) {
-        return UserModel.fromAuthJson(decoded);
+        return RegisterPending.fromJson(decoded);
       }
     }
 
@@ -48,6 +48,7 @@ class AuthRegister {
     );
     throw AuthException(
       _readDetail(response.body) ?? 'Registrasi gagal. Coba lagi.',
+      statusCode: response.statusCode,
     );
   }
 

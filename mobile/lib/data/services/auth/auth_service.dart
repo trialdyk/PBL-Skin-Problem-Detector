@@ -1,15 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+import 'package:pbl_skin_problem_detector/data/models/register_pending.dart';
 import 'package:pbl_skin_problem_detector/data/models/user_model.dart';
 import 'package:pbl_skin_problem_detector/data/services/api_client.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth_exception.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth_google.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth_login.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth_register.dart';
+import 'package:pbl_skin_problem_detector/data/services/auth/auth_resend_verification.dart';
+import 'package:pbl_skin_problem_detector/data/services/auth/auth_verify_email.dart';
 
-/// Facade for auth endpoints. Prefer calling [login] / [register] / [loginWithGoogle];
-/// underlying files live next to this one (`auth_login.dart`, …).
+/// Facade for auth endpoints.
 class AuthService {
   /// Akun demo lokal (hanya dipakai saat [mockRemoteAuth] = true di widget test).
   static const String demoEmail = 'pengguna@gmail.com';
@@ -19,7 +21,6 @@ class AuthService {
   @visibleForTesting
   static bool mockRemoteAuth = false;
 
-  /// Alias lama untuk kompatibilitas test.
   @visibleForTesting
   static bool get mockGoogleSignIn => mockRemoteAuth;
   @visibleForTesting
@@ -32,15 +33,18 @@ class AuthService {
   }) : api = apiClient ?? ApiClient(httpClient: httpClient) {
     _login = AuthLogin(api);
     _register = AuthRegister(api);
+    _verifyEmail = AuthVerifyEmail(api);
+    _resend = AuthResendVerification(api);
     _google = AuthGoogle(api, googleSignIn: googleSignIn);
   }
 
   final ApiClient api;
   late final AuthLogin _login;
   late final AuthRegister _register;
+  late final AuthVerifyEmail _verifyEmail;
+  late final AuthResendVerification _resend;
   late final AuthGoogle _google;
 
-  /// Simpan JWT setelah login supaya call protected (`auth: true`) otomatis.
   void setAccessToken(String? token) {
     api.accessToken = token;
   }
@@ -49,7 +53,6 @@ class AuthService {
     api.accessToken = null;
   }
 
-  /// Email/password → `POST /auth/login` (public).
   Future<UserModel> login({
     required String email,
     required String password,
@@ -77,8 +80,8 @@ class AuthService {
     return user;
   }
 
-  /// `POST /auth/register` (public).
-  Future<UserModel> register({
+  /// `POST /auth/register` — returns pending OTP info (no JWT).
+  Future<RegisterPending> register({
     required String email,
     required String password,
     required bool acceptedTerms,
@@ -92,25 +95,51 @@ class AuthService {
 
     if (mockRemoteAuth) {
       await Future<void>.delayed(const Duration(milliseconds: 400));
+      return RegisterPending(
+        email: email.trim().toLowerCase(),
+        message: 'Kode verifikasi telah dikirim ke email Anda.',
+        expiresIn: 900,
+      );
+    }
+
+    return _register(
+      email: email,
+      password: password,
+      fullName: fullName,
+    );
+  }
+
+  Future<UserModel> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
+    if (mockRemoteAuth) {
+      await Future<void>.delayed(const Duration(milliseconds: 400));
       final user = UserModel(
-        email: email.trim(),
-        fullName: fullName,
+        email: email.trim().toLowerCase(),
         accessToken: 'mock-token',
       );
       setAccessToken(user.accessToken);
       return user;
     }
 
-    final user = await _register(
-      email: email,
-      password: password,
-      fullName: fullName,
-    );
+    final user = await _verifyEmail(email: email, code: code);
     setAccessToken(user.accessToken);
     return user;
   }
 
-  /// Google Sign-In → `POST /auth/google` (public).
+  Future<RegisterPending> resendVerification({required String email}) async {
+    if (mockRemoteAuth) {
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      return RegisterPending(
+        email: email.trim().toLowerCase(),
+        message: 'Jika email terdaftar dan belum diverifikasi, kode baru telah dikirim.',
+        expiresIn: 900,
+      );
+    }
+    return _resend(email: email);
+  }
+
   Future<UserModel> loginWithGoogle({required bool acceptedTerms}) async {
     if (!acceptedTerms) {
       throw AuthException(
