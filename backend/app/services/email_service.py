@@ -26,19 +26,28 @@ class EmailSendError(Exception):
     """Raised when SMTP is misconfigured or the provider rejects the message."""
 
 
-def _plain_body(code: str, expire_minutes: int) -> str:
+def _greeting(full_name: str | None) -> str:
+    name = (full_name or "").strip()
+    if name:
+        first = name.split()[0]
+        return f"Halo, {first}!"
+    return "Halo!"
+
+
+def _plain_body(code: str, expire_minutes: int, full_name: str | None) -> str:
     return (
-        "Halo,\n\n"
-        f"Kode verifikasi akun DermaScan Anda adalah: {code}\n\n"
+        f"{_greeting(full_name)}\n\n"
+        f"Gunakan kode berikut untuk mengaktifkan akun DermaScan Anda:\n\n"
+        f"{code}\n\n"
         f"Kode berlaku {expire_minutes} menit. "
-        "Jangan bagikan kode ini kepada siapa pun.\n\n"
-        "Jika Anda tidak meminta kode ini, abaikan email ini.\n\n"
-        "— Tim DermaScan\n"
+        "Jangan bagikan kepada siapa pun.\n\n"
+        "Jika Anda tidak meminta kode ini, abaikan email ini.\n"
     )
 
 
-def _html_body(code: str, expire_minutes: int) -> str:
+def _html_body(code: str, expire_minutes: int, full_name: str | None) -> str:
     safe_code = html.escape(code)
+    safe_hello = html.escape(_greeting(full_name))
     digits = "".join(
         (
             "<td style=\"padding:0 4px;\">"
@@ -50,6 +59,9 @@ def _html_body(code: str, expire_minutes: int) -> str:
         )
         for digit in code
     )
+    # Email clients block clipboard JS. A mailto/body link lets the user
+    # quickly grab the code from a draft on many devices.
+    copy_href = html.escape(f"mailto:?subject=Kode%20DermaScan&body={code}")
     return f"""\
 <!DOCTYPE html>
 <html lang="id">
@@ -83,26 +95,40 @@ def _html_body(code: str, expire_minutes: int) -> str:
             <td style="padding:28px;">
               <p style="margin:0 0 12px;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;
                          font-size:16px;font-weight:700;color:{_INK};">
-                Halo,
+                {safe_hello}
               </p>
               <p style="margin:0 0 22px;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;
                          font-size:14px;line-height:1.55;color:{_MUTED};">
                 Gunakan kode berikut untuk mengaktifkan akun DermaScan Anda:
               </p>
               <table role="presentation" cellspacing="0" cellpadding="0" align="center"
-                     style="margin:0 auto 22px;">
+                     style="margin:0 auto 18px;">
                 <tr>
                   {digits}
                 </tr>
               </table>
-              <p style="margin:0 0 8px;text-align:center;
+              <p style="margin:0 0 16px;text-align:center;
                          font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;
                          font-size:13px;color:{_MUTED};">
                 Atau salin kode ini:
                 <strong style="color:{_INK};letter-spacing:2px;">{safe_code}</strong>
               </p>
+              <table role="presentation" cellspacing="0" cellpadding="0" align="center"
+                     style="margin:0 auto 22px;">
+                <tr>
+                  <td align="center" bgcolor="{_BRAND}" style="border-radius:12px;">
+                    <a href="{copy_href}"
+                       style="display:inline-block;padding:12px 28px;
+                              font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+                              font-size:14px;font-weight:700;color:{_WHITE};
+                              text-decoration:none;border-radius:12px;">
+                      Salin kode
+                    </a>
+                  </td>
+                </tr>
+              </table>
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
-                     style="margin-top:18px;background:{_PAGE};border-radius:12px;
+                     style="margin-top:4px;background:{_PAGE};border-radius:12px;
                             border:1px solid {_BORDER};">
                 <tr>
                   <td style="padding:14px 16px;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;
@@ -113,12 +139,6 @@ def _html_body(code: str, expire_minutes: int) -> str:
                   </td>
                 </tr>
               </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:0 28px 24px;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-                       font-size:12px;color:{_MUTED};">
-              — Tim DermaScan
             </td>
           </tr>
         </table>
@@ -135,7 +155,13 @@ def _html_body(code: str, expire_minutes: int) -> str:
 """
 
 
-def send_verification_code(to_email: str, code: str, *, settings: Settings | None = None) -> None:
+def send_verification_code(
+    to_email: str,
+    code: str,
+    *,
+    full_name: str | None = None,
+    settings: Settings | None = None,
+) -> None:
     """Send a 6-digit verification code to ``to_email``.
 
     In development, if SMTP is not configured, the code is logged and the call
@@ -144,8 +170,8 @@ def send_verification_code(to_email: str, code: str, *, settings: Settings | Non
     """
     cfg = settings or get_settings()
     subject = "Kode verifikasi DermaScan"
-    plain = _plain_body(code, cfg.email_verification_expire_minutes)
-    rich = _html_body(code, cfg.email_verification_expire_minutes)
+    plain = _plain_body(code, cfg.email_verification_expire_minutes, full_name)
+    rich = _html_body(code, cfg.email_verification_expire_minutes, full_name)
 
     if not cfg.smtp_configured:
         if cfg.app_env == "development":

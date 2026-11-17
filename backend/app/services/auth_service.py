@@ -79,7 +79,12 @@ def issue_email_verification(db: Session, user: User) -> tuple[str, int]:
     db.commit()
     db.refresh(user)
 
-    email_service.send_verification_code(user.email, code, settings=settings)
+    email_service.send_verification_code(
+        user.email,
+        code,
+        full_name=user.full_name,
+        settings=settings,
+    )
     return code, expires_in
 
 
