@@ -60,10 +60,14 @@ Daftar resmi = kunci `paths` di `backend/openapi.json`. Saat export terakhir:
 | Method | Path | Auth | Catatan |
 |---|---|---|---|
 | `POST` | `/auth/login` | Publik | JWT + user |
-| `POST` | `/auth/register` | Publik | Akun baru + JWT |
+| `POST` | `/auth/register` | Publik | Akun baru + kirim OTP verifikasi email |
+| `POST` | `/auth/verify-email` | Publik | Verifikasi OTP email → JWT + user |
+| `POST` | `/auth/resend-verification` | Publik | Kirim ulang OTP verifikasi email |
 | `POST` | `/auth/google` | Publik | Tukar Google `id_token` → JWT |
 | `GET` | `/health` | Publik | Tanpa database |
 | `GET` | `/users/status` | Bearer | Placeholder |
+| `GET` | `/users/me` | Bearer | Profil pengguna yang sedang login |
+| `PATCH` | `/users/me` | Bearer | Ubah nama dan/atau email pengguna |
 | `GET` | `/items/status` | Bearer | Placeholder |
 | `POST` | `/ml/predict` | Bearer | Prediksi keparahan jerawat (CNN) → grade GEA |
 
@@ -73,7 +77,7 @@ dan header `WWW-Authenticate: Bearer`.
 
 Detail field, contoh schema, dan response error: buka `openapi.json` atau `/docs`.
 
-Belum ada: profil (`/users/me`), refresh token, logout, verifikasi email, lupa
+Belum ada: ubah kata sandi (`/users/me/password`), refresh token, logout, lupa
 kata sandi, dan riwayat diagnosa.
 
 ## `POST /ml/predict` — catatan di luar OpenAPI

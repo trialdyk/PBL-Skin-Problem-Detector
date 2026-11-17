@@ -14,8 +14,9 @@ app = FastAPI(
         "Public: POST /auth/login, POST /auth/register, POST /auth/verify-email, "
         "POST /auth/resend-verification, POST /auth/google, GET /health. "
         "Protected routes require Authorization: Bearer <access_token> "
-        "(Authorize in Swagger). POST /ml/predict runs the shipped CNN on 1-3 face "
-        "photos and returns a GEA grade. Users and items are placeholders."
+        "(Authorize in Swagger). /users/me reads and updates the caller's profile. "
+        "POST /ml/predict runs the shipped CNN on 1-3 face photos and returns a GEA grade. "
+        "Items is a placeholder."
     ),
     openapi_tags=[
         {
@@ -27,7 +28,7 @@ app = FastAPI(
         },
         {
             "name": "users",
-            "description": "Protected. Placeholder status endpoint only.",
+            "description": "Protected. Current user profile (GET/PATCH /users/me) and router status.",
         },
         {
             "name": "items",

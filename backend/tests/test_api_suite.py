@@ -32,12 +32,13 @@ EXPECTED_PATHS = {
     "/auth/resend-verification",
     "/auth/google",
     "/users/status",
+    "/users/me",
     "/items/status",
     "/ml/predict",
     "/health",
 }
 
-PROTECTED_PATHS = ("/users/status", "/items/status", "/ml/predict")
+PROTECTED_PATHS = ("/users/status", "/users/me", "/items/status", "/ml/predict")
 
 
 def _png(color: tuple[int, int, int] = (214, 176, 160), size: int = 32) -> bytes:
@@ -218,7 +219,7 @@ def test_protected_routes_require_bearer(client: TestClient, path: str) -> None:
     assert response.headers.get("www-authenticate") == "Bearer"
 
 
-@pytest.mark.parametrize("path", ("/users/status", "/items/status"))
+@pytest.mark.parametrize("path", ("/users/status", "/users/me", "/items/status"))
 def test_protected_get_rejects_bad_token(client: TestClient, path: str) -> None:
     response = client.get(path, headers={"Authorization": "Bearer bukan.jwt.valid"})
     assert response.status_code == 401
@@ -333,5 +334,14 @@ def test_full_auth_flow_then_protected_calls(
 
     headers = {"Authorization": f"Bearer {token}"}
     assert client.get("/users/status", headers=headers).status_code == 200
+    assert client.get("/users/me", headers=headers).status_code == 200
+    updated = client.patch(
+        "/users/me",
+        headers=headers,
+        json={"full_name": "Flow Baru", "email": "flow.baru@gmail.com"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["full_name"] == "Flow Baru"
+    assert updated.json()["email"] == "flow.baru@gmail.com"
     assert client.get("/items/status", headers=headers).status_code == 200
     assert client.get("/health").status_code == 200
