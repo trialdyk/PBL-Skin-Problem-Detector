@@ -52,6 +52,38 @@ class AuthRepository {
     return user;
   }
 
+  /// Memperbarui nama dan email pengguna pada sesi aktif di memori aplikasi.
+  UserModel? updateProfile({
+    required String fullName,
+    required String email,
+  }) {
+    final current = _currentUser;
+    if (current == null) return null;
+    final trimmedName = fullName.trim();
+    final normalizedEmail = email.trim().toLowerCase();
+    if (trimmedName.isEmpty || normalizedEmail.isEmpty) return current;
+    final updated = current.copyWith(
+      fullName: trimmedName,
+      email: normalizedEmail,
+    );
+    _currentUser = updated;
+    return updated;
+  }
+
+  /// Menyimpan pembaruan kata sandi pada sesi aktif (menunggu endpoint backend).
+  bool changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    if (_currentUser == null) return false;
+    if (currentPassword.isEmpty ||
+        newPassword.length < 8 ||
+        newPassword.length > 128) {
+      return false;
+    }
+    return true;
+  }
+
   void logout() {
     _currentUser = null;
     _service.clearAccessToken();

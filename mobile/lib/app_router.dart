@@ -9,7 +9,9 @@ import 'package:pbl_skin_problem_detector/business/cubit/home_cubit.dart';
 import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
 import 'package:pbl_skin_problem_detector/data/models/article_item.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/article_detail_screen.dart';
+import 'package:pbl_skin_problem_detector/presentation/screens/change_password_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/diagnosis_screen.dart';
+import 'package:pbl_skin_problem_detector/presentation/screens/edit_profile_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/home_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/interview_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/login_screen.dart';
@@ -68,6 +70,14 @@ GoRouter createRouter(AuthCubit authCubit) {
         path: '/home',
         builder: (context, state) =>
             BlocProvider(create: (_) => HomeCubit(), child: const HomeScreen()),
+      ),
+      GoRoute(
+        path: '/profile/edit',
+        builder: (context, state) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: '/profile/password',
+        builder: (context, state) => const ChangePasswordScreen(),
       ),
       GoRoute(
         path: '/articles/detail',

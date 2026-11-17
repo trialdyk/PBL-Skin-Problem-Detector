@@ -95,6 +95,84 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  static final _emailPattern = RegExp(r'^[\w.+-]+@[\w-]+\.[\w.-]+$');
+
+  /// Memperbarui nama dan email pengguna pada sesi aktif.
+  bool updateProfile({required String fullName, required String email}) {
+    final trimmedName = fullName.trim();
+    final trimmedEmail = email.trim().toLowerCase();
+    if (trimmedName.isEmpty || trimmedName.length > 255) {
+      emit(
+        state.copyWith(
+          errorMessage: trimmedName.isEmpty
+              ? 'Nama lengkap tidak boleh kosong.'
+              : 'Nama lengkap maksimal 255 karakter.',
+        ),
+      );
+      return false;
+    }
+    if (trimmedEmail.isEmpty ||
+        trimmedEmail.length > 255 ||
+        !_emailPattern.hasMatch(trimmedEmail)) {
+      emit(
+        state.copyWith(
+          errorMessage: trimmedEmail.isEmpty
+              ? 'Email tidak boleh kosong.'
+              : 'Format email tidak valid.',
+        ),
+      );
+      return false;
+    }
+
+    final updated = _repository.updateProfile(
+      fullName: trimmedName,
+      email: trimmedEmail,
+    );
+    if (updated == null) return false;
+    emit(state.copyWith(user: updated, clearError: true));
+    return true;
+  }
+
+  /// Memperbarui kata sandi pengguna pada sesi aktif.
+  bool changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    if (currentPassword.isEmpty) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Kata sandi saat ini tidak boleh kosong.',
+        ),
+      );
+      return false;
+    }
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Kata sandi baru harus 8–128 karakter.',
+        ),
+      );
+      return false;
+    }
+    if (newPassword == currentPassword) {
+      emit(
+        state.copyWith(
+          errorMessage:
+              'Kata sandi baru harus berbeda dari kata sandi saat ini.',
+        ),
+      );
+      return false;
+    }
+
+    final ok = _repository.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+    if (!ok) return false;
+    emit(state.copyWith(clearError: true));
+    return true;
+  }
+
   void logout() {
     _repository.logout();
     emit(const AuthState(status: AuthStatus.unauthenticated));
