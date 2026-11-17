@@ -21,7 +21,8 @@ app = FastAPI(
         {
             "name": "auth",
             "description": (
-                "Public login/register/Google. Issues a bearer JWT used on protected routes."
+                "Public login/register/verify-email/Google. Password sign-up sends an "
+                "OTP; JWT is issued after verify-email (or Google)."
             ),
         },
         {

@@ -63,7 +63,14 @@ def db() -> Generator[Session, None, None]:
     )
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)()
-    session.add(User(email=EMAIL, password_hash=hash_password(PASSWORD), full_name="Pengguna"))
+    session.add(
+        User(
+            email=EMAIL,
+            password_hash=hash_password(PASSWORD),
+            full_name="Pengguna",
+            email_verified=True,
+        )
+    )
     session.commit()
     yield session
     session.close()
