@@ -2,11 +2,14 @@ import 'package:pbl_skin_problem_detector/data/models/register_pending.dart';
 import 'package:pbl_skin_problem_detector/data/models/user_model.dart';
 import 'package:pbl_skin_problem_detector/data/services/api_client.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth.dart';
+import 'package:pbl_skin_problem_detector/data/services/user/user.dart';
 
 class AuthRepository {
-  AuthRepository(this._service);
+  AuthRepository(this._service, {UserService? userService})
+      : _userService = userService ?? UserService(apiClient: _service.api);
 
   final AuthService _service;
+  final UserService _userService;
   UserModel? _currentUser;
 
   UserModel? get currentUser => _currentUser;
@@ -63,21 +66,25 @@ class AuthRepository {
     return user;
   }
 
-  UserModel? updateProfile({
+  /// Mengambil profil terbaru pengguna dari `GET /users/me`.
+  Future<UserModel> fetchProfile() async {
+    final user = await _userService.getProfile(currentUser: _currentUser);
+    _currentUser = user;
+    return user;
+  }
+
+  /// Memperbarui nama dan email pengguna lewat `PATCH /users/me`.
+  Future<UserModel> updateProfile({
     required String fullName,
     required String email,
-  }) {
-    final current = _currentUser;
-    if (current == null) return null;
-    final trimmedName = fullName.trim();
-    final normalizedEmail = email.trim().toLowerCase();
-    if (trimmedName.isEmpty || normalizedEmail.isEmpty) return current;
-    final updated = current.copyWith(
-      fullName: trimmedName,
-      email: normalizedEmail,
+  }) async {
+    final user = await _userService.updateProfile(
+      fullName: fullName,
+      email: email,
+      currentUser: _currentUser,
     );
-    _currentUser = updated;
-    return updated;
+    _currentUser = user;
+    return user;
   }
 
   bool changePassword({

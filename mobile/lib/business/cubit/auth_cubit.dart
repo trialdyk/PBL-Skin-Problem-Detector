@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/auth_state.dart';
 import 'package:pbl_skin_problem_detector/data/repositories/auth_repository.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth.dart';
+import 'package:pbl_skin_problem_detector/data/services/user/user.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   AuthCubit(this._repository) : super(const AuthState());
@@ -192,6 +194,130 @@ class AuthCubit extends Cubit<AuthState> {
         ),
       );
     }
+  }
+
+  static final _emailPattern = RegExp(r'^[\w.+-]+@[\w-]+\.[\w.-]+$');
+
+  /// Menyinkronkan profil pengguna dari `GET /users/me`.
+  Future<void> refreshProfile() async {
+    if (state.status != AuthStatus.authenticated) return;
+    try {
+      final user = await _repository.fetchProfile();
+      if (state.status != AuthStatus.authenticated) return;
+      emit(state.copyWith(user: user));
+    } on UserException catch (e) {
+      if (e.isUnauthorized) {
+        logout();
+        return;
+      }
+      debugPrint('Refresh profile failed: ${e.message}');
+    } catch (e) {
+      debugPrint('Refresh profile failed: $e');
+    }
+  }
+
+  /// Memperbarui nama dan email pengguna melalui `PATCH /users/me`.
+  Future<bool> updateProfile({
+    required String fullName,
+    required String email,
+  }) async {
+    if (state.profileSaving) return false;
+
+    final trimmedName = fullName.trim();
+    final trimmedEmail = email.trim().toLowerCase();
+    if (trimmedName.isEmpty || trimmedName.length > 255) {
+      emit(
+        state.copyWith(
+          errorMessage: trimmedName.isEmpty
+              ? 'Nama lengkap tidak boleh kosong.'
+              : 'Nama lengkap maksimal 255 karakter.',
+        ),
+      );
+      return false;
+    }
+    if (trimmedEmail.isEmpty ||
+        trimmedEmail.length > 255 ||
+        !_emailPattern.hasMatch(trimmedEmail)) {
+      emit(
+        state.copyWith(
+          errorMessage: trimmedEmail.isEmpty
+              ? 'Email tidak boleh kosong.'
+              : 'Format email tidak valid.',
+        ),
+      );
+      return false;
+    }
+
+    emit(state.copyWith(profileSaving: true, clearError: true));
+    try {
+      final updated = await _repository.updateProfile(
+        fullName: trimmedName,
+        email: trimmedEmail,
+      );
+      emit(
+        state.copyWith(
+          user: updated,
+          profileSaving: false,
+          clearError: true,
+        ),
+      );
+      return true;
+    } on UserException catch (e) {
+      if (e.isUnauthorized) {
+        logout();
+        return false;
+      }
+      emit(state.copyWith(profileSaving: false, errorMessage: e.message));
+      return false;
+    } catch (_) {
+      emit(
+        state.copyWith(
+          profileSaving: false,
+          errorMessage: 'Gagal memperbarui profil. Coba lagi.',
+        ),
+      );
+      return false;
+    }
+  }
+
+  /// Memperbarui kata sandi pengguna pada sesi aktif.
+  bool changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    if (currentPassword.isEmpty) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Kata sandi saat ini tidak boleh kosong.',
+        ),
+      );
+      return false;
+    }
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      emit(
+        state.copyWith(
+          errorMessage: 'Kata sandi baru harus 8–128 karakter.',
+        ),
+      );
+      return false;
+    }
+    if (newPassword == currentPassword) {
+      emit(
+        state.copyWith(
+          errorMessage:
+              'Kata sandi baru harus berbeda dari kata sandi saat ini.',
+        ),
+      );
+      return false;
+    }
+
+    final ok = _repository.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+    if (!ok) return false;
+    emit(state.copyWith(clearError: true));
+    return true;
   }
 
   void logout() {

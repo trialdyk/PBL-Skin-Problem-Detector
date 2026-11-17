@@ -18,6 +18,7 @@ class AuthState extends Equatable {
     this.pendingEmail,
     this.acceptedPrivacy = false,
     this.acceptedTerms = false,
+    this.profileSaving = false,
     this.errorMessage,
   });
 
@@ -27,6 +28,7 @@ class AuthState extends Equatable {
   final String? pendingEmail;
   final bool acceptedPrivacy;
   final bool acceptedTerms;
+  final bool profileSaving;
   final String? errorMessage;
 
   bool get canSubmit => acceptedPrivacy && acceptedTerms;
@@ -37,6 +39,7 @@ class AuthState extends Equatable {
     String? pendingEmail,
     bool? acceptedPrivacy,
     bool? acceptedTerms,
+    bool? profileSaving,
     String? errorMessage,
     bool clearError = false,
     bool clearUser = false,
@@ -49,6 +52,7 @@ class AuthState extends Equatable {
           clearPendingEmail ? null : (pendingEmail ?? this.pendingEmail),
       acceptedPrivacy: acceptedPrivacy ?? this.acceptedPrivacy,
       acceptedTerms: acceptedTerms ?? this.acceptedTerms,
+      profileSaving: profileSaving ?? this.profileSaving,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -60,6 +64,7 @@ class AuthState extends Equatable {
         pendingEmail,
         acceptedPrivacy,
         acceptedTerms,
+        profileSaving,
         errorMessage,
       ];
 }

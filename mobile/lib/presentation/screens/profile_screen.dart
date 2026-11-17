@@ -6,9 +6,22 @@ import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-/// Tab Profil — menampilkan ringkasan akun, menu preferensi, dan tombol keluar.
-class ProfileScreen extends StatelessWidget {
+/// Tab Profil — menampilkan ringkasan akun, aksi edit/ubah kata sandi, dan tombol keluar.
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AuthCubit>().refreshProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
