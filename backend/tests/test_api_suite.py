@@ -28,6 +28,8 @@ OPENAPI_PATH = Path(__file__).resolve().parents[1] / "openapi.json"
 EXPECTED_PATHS = {
     "/auth/login",
     "/auth/register",
+    "/auth/verify-email",
+    "/auth/resend-verification",
     "/auth/google",
     "/users/status",
     "/items/status",
@@ -126,12 +128,14 @@ def test_login_invalid_body(client: TestClient) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_register_success(client: TestClient) -> None:
+def test_register_success(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.email_service.send_verification_code", lambda *a, **k: None)
     response = client.post("/auth/register", json=register_body())
     assert response.status_code == 201
     body = response.json()
-    assert body["user"]["email"] == "budi@gmail.com"
-    assert body["access_token"]
+    assert body["email"] == "budi@gmail.com"
+    assert "access_token" not in body
+    assert body["expires_in"] > 0
 
 
 def test_register_duplicate_email(client: TestClient) -> None:
@@ -298,13 +302,28 @@ def test_ml_predict_returns_503_when_model_missing(
 # ---------------------------------------------------------------------------
 
 
-def test_full_auth_flow_then_protected_calls(client: TestClient) -> None:
+def test_full_auth_flow_then_protected_calls(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    codes: list[str] = []
+    monkeypatch.setattr(
+        "app.services.email_service.send_verification_code",
+        lambda to, code, settings=None: codes.append(code),
+    )
     registered = client.post(
         "/auth/register",
         json=register_body(email="flow@gmail.com", password="password1"),
     )
     assert registered.status_code == 201
-    token = registered.json()["access_token"]
+    assert codes
+
+    verified = client.post(
+        "/auth/verify-email",
+        json={"email": "flow@gmail.com", "code": codes[-1]},
+    )
+    assert verified.status_code == 200
+    token = verified.json()["access_token"]
 
     login = client.post(
         "/auth/login",

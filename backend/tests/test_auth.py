@@ -177,63 +177,79 @@ def register_body(**overrides: object) -> dict[str, object]:
     }
 
 
-def test_register_creates_account_and_returns_token(client: TestClient, db: Session) -> None:
+def test_register_creates_unverified_account_and_sends_code(
+    client: TestClient,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sent: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        "app.services.email_service.send_verification_code",
+        lambda to, code, settings=None: sent.append((to, code)),
+    )
+
     response = client.post("/auth/register", json=register_body())
 
     assert response.status_code == 201
     payload = response.json()
-    assert payload["token_type"] == "bearer"
-    assert payload["expires_in"] == get_settings().jwt_expire_minutes * 60
-    assert payload["user"]["email"] == NEW_EMAIL
-    assert payload["user"]["full_name"] == "Budi Santoso"
-    assert "password_hash" not in payload["user"]
-
-    settings = get_settings()
-    claims = jwt.decode(
-        payload["access_token"],
-        settings.jwt_secret_key,
-        algorithms=[settings.jwt_algorithm],
-    )
-    assert claims["sub"] == payload["user"]["id"]
+    assert payload["email"] == NEW_EMAIL
+    assert "access_token" not in payload
+    assert payload["expires_in"] == get_settings().email_verification_expire_minutes * 60
+    assert sent and sent[0][0] == NEW_EMAIL
+    assert len(sent[0][1]) == 6
 
     stored = db.query(User).filter_by(email=NEW_EMAIL).one()
-    assert str(stored.id) == payload["user"]["id"]
+    assert stored.full_name == "Budi Santoso"
+    assert stored.email_verified is False
     assert stored.is_active is True
-    assert stored.password_hash != NEW_PASSWORD
     assert stored.password_hash.startswith("$argon2")
+    assert stored.email_verification_code_hash is not None
 
 
-def test_registered_user_can_log_in(client: TestClient) -> None:
+def test_registered_unverified_user_cannot_log_in_yet(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.services.email_service.send_verification_code", lambda *a, **k: None)
     client.post("/auth/register", json=register_body())
 
     response = client.post(
         "/auth/login",
         json=login_body(email=NEW_EMAIL, password=NEW_PASSWORD),
     )
-    assert response.status_code == 200
-    assert response.json()["user"]["email"] == NEW_EMAIL
+    assert response.status_code == 403
+    assert "belum diverifikasi" in response.json()["detail"]
 
 
-def test_register_normalizes_email_and_name(client: TestClient, db: Session) -> None:
+def test_register_normalizes_email_and_name(
+    client: TestClient,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.services.email_service.send_verification_code", lambda *a, **k: None)
     response = client.post(
         "/auth/register",
         json=register_body(email="  Budi@Gmail.com ", full_name="  Budi  "),
     )
 
     assert response.status_code == 201
-    assert response.json()["user"]["email"] == NEW_EMAIL
-    assert response.json()["user"]["full_name"] == "Budi"
-    assert db.query(User).filter_by(email=NEW_EMAIL).count() == 1
+    assert response.json()["email"] == NEW_EMAIL
+    assert db.query(User).filter_by(email=NEW_EMAIL).one().full_name == "Budi"
 
 
-def test_register_full_name_is_optional(client: TestClient) -> None:
+def test_register_full_name_is_optional(
+    client: TestClient,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.services.email_service.send_verification_code", lambda *a, **k: None)
     body = register_body()
     del body["full_name"]
 
     response = client.post("/auth/register", json=body)
 
     assert response.status_code == 201
-    assert response.json()["user"]["full_name"] is None
+    assert db.query(User).filter_by(email=NEW_EMAIL).one().full_name is None
 
 
 @pytest.mark.parametrize("email", [EMAIL, "PENGGUNA@GMAIL.COM", " pengguna@gmail.com "])
@@ -252,7 +268,9 @@ def test_register_duplicate_email_returns_409(
 def test_register_failed_duplicate_leaves_session_usable(
     client: TestClient,
     db: Session,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("app.services.email_service.send_verification_code", lambda *a, **k: None)
     client.post("/auth/register", json=register_body(email=EMAIL))
 
     response = client.post("/auth/register", json=register_body())
@@ -311,7 +329,12 @@ def test_register_validates_fields(
 
 
 @pytest.mark.parametrize("password", ["12345678", "a" * 128])
-def test_register_accepts_password_length_limits(client: TestClient, password: str) -> None:
+def test_register_accepts_password_length_limits(
+    client: TestClient,
+    password: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.services.email_service.send_verification_code", lambda *a, **k: None)
     response = client.post("/auth/register", json=register_body(password=password))
     assert response.status_code == 201
 
