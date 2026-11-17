@@ -185,7 +185,7 @@ def test_register_creates_unverified_account_and_sends_code(
     sent: list[tuple[str, str]] = []
     monkeypatch.setattr(
         "app.services.email_service.send_verification_code",
-        lambda to, code, settings=None: sent.append((to, code)),
+        lambda to, code, *, full_name=None, settings=None: sent.append((to, code)),
     )
 
     response = client.post("/auth/register", json=register_body())

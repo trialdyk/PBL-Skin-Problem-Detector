@@ -46,7 +46,13 @@ def client(db: Session) -> Generator[TestClient, None, None]:
 def capture_code(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     codes: list[str] = []
 
-    def _send(to_email: str, code: str, settings=None) -> None:  # noqa: ANN001
+    def _send(
+        to_email: str,
+        code: str,
+        *,
+        full_name=None,  # noqa: ANN001
+        settings=None,  # noqa: ANN001
+    ) -> None:
         codes.append(code)
 
     monkeypatch.setattr("app.services.email_service.send_verification_code", _send)
