@@ -59,9 +59,6 @@ def _html_body(code: str, expire_minutes: int, full_name: str | None) -> str:
         )
         for digit in code
     )
-    # Email clients block clipboard JS. A mailto/body link lets the user
-    # quickly grab the code from a draft on many devices.
-    copy_href = html.escape(f"mailto:?subject=Kode%20DermaScan&body={code}")
     return f"""\
 <!DOCTYPE html>
 <html lang="id">
@@ -107,26 +104,16 @@ def _html_body(code: str, expire_minutes: int, full_name: str | None) -> str:
                   {digits}
                 </tr>
               </table>
-              <p style="margin:0 0 16px;text-align:center;
+              <p style="margin:0 0 8px;text-align:center;
                          font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;
                          font-size:13px;color:{_MUTED};">
-                Atau salin kode ini:
-                <strong style="color:{_INK};letter-spacing:2px;">{safe_code}</strong>
+                Blokir / tekan lama kode di atas, lalu salin.
               </p>
-              <table role="presentation" cellspacing="0" cellpadding="0" align="center"
-                     style="margin:0 auto 22px;">
-                <tr>
-                  <td align="center" bgcolor="{_BRAND}" style="border-radius:12px;">
-                    <a href="{copy_href}"
-                       style="display:inline-block;padding:12px 28px;
-                              font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-                              font-size:14px;font-weight:700;color:{_WHITE};
-                              text-decoration:none;border-radius:12px;">
-                      Salin kode
-                    </a>
-                  </td>
-                </tr>
-              </table>
+              <p style="margin:0 0 22px;text-align:center;
+                         font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+                         font-size:18px;font-weight:700;letter-spacing:4px;color:{_INK};">
+                {safe_code}
+              </p>
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
                      style="margin-top:4px;background:{_PAGE};border-radius:12px;
                             border:1px solid {_BORDER};">
