@@ -53,6 +53,21 @@ class ApiClient {
         .timeout(timeout);
   }
 
+  Future<http.Response> patch(
+    String path, {
+    Map<String, Object?>? body,
+    bool auth = false,
+    Duration timeout = const Duration(seconds: 20),
+  }) {
+    return _client
+        .patch(
+          uri(path),
+          headers: headers(auth: auth),
+          body: body == null ? null : jsonEncode(body),
+        )
+        .timeout(timeout);
+  }
+
   /// Multipart POST for file uploads, e.g. `POST /ml/predict`.
   ///
   /// [files] maps a form field name to absolute file paths (one part per path).

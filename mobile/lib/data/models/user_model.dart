@@ -43,6 +43,18 @@ class UserModel extends Equatable {
     );
   }
 
+  /// Parses `UserProfileResponse` from `GET /users/me` or `PATCH /users/me`.
+  factory UserModel.fromProfileJson(
+    Map<String, dynamic> json, {
+    String? accessToken,
+  }) {
+    return UserModel(
+      email: json['email'] as String? ?? '',
+      fullName: json['full_name'] as String?,
+      accessToken: accessToken,
+    );
+  }
+
   @override
   List<Object?> get props => [email, fullName, accessToken];
 }

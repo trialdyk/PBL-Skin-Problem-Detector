@@ -104,13 +104,15 @@ rule-based dari interview (`GeaDiagnosisService`) dan menandai hasilnya dengan
 
 ## Mapping ke aplikasi mobile
 
-Implementasi ada di `mobile/lib/data/services/auth/` (satu file per endpoint):
+Implementasi ada di `mobile/lib/data/services/` (`auth/`, `user/`, `ml/`, `scan/` — satu file per endpoint):
 
 | Endpoint | File Flutter | Dipakai layar |
 |---|---|---|
 | `POST /auth/login` | `auth/auth_login.dart` | `LoginScreen` (email + kata sandi) |
 | `POST /auth/google` | `auth/auth_google.dart` | `LoginScreen` (tombol Google) |
-| `POST /auth/register` | `auth/auth_register.dart` | `RegisterScreen` → `AuthCubit.register` → `AuthRepository.register`; sukses langsung ke beranda |
+| `POST /auth/register` | `auth/auth_register.dart` | `RegisterScreen` → `AuthCubit.register` → `AuthRepository.register`; lanjut ke `VerifyEmailScreen` |
+| `GET` `/users/me` | `user/user_get_profile.dart` | `ProfileScreen` (`AuthCubit.refreshProfile` → `AuthRepository.fetchProfile`) |
+| `PATCH` `/users/me` | `user/user_update_profile.dart` | `EditProfileScreen` (`AuthCubit.updateProfile` → `AuthRepository.updateProfile`) |
 | `POST /ml/predict` | `ml/ml_predict.dart` | `DiagnosisScreen` (lewat `ScanRepository`) |
 
 Field yang dikirim (schema: `LoginRequest` / `RegisterRequest` /
