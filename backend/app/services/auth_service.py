@@ -49,6 +49,13 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _as_aware(value: datetime) -> datetime:
+    """SQLite often returns naive datetimes; treat them as UTC."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 def _generate_code() -> str:
     """Return a cryptographically random 6-digit code (000000–999999)."""
     return f"{secrets.randbelow(1_000_000):06d}"
@@ -133,7 +140,7 @@ def verify_email(db: Session, email: str, code: str) -> User:
     if (
         not user.email_verification_code_hash
         or expires is None
-        or expires < _utcnow()
+        or _as_aware(expires) < _utcnow()
         or not verify_password(code, user.email_verification_code_hash)
     ):
         raise VerificationError(INVALID_CODE_MESSAGE)
