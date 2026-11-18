@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
@@ -51,34 +52,35 @@ class _AgeSpinBoxState extends State<AgeSpinBox> {
     }
   }
 
-  void _normalizeInput() {
+  int _normalizeInput() {
     final parsed = int.tryParse(_controller.text.trim());
-    if (parsed == null) {
-      _updateAge(_age);
-    } else {
-      final clamped = parsed.clamp(widget.min, widget.max);
-      _updateAge(clamped);
-    }
+    final finalAge = (parsed ?? _age).clamp(widget.min, widget.max);
+    _updateAge(finalAge);
+    return finalAge;
   }
 
   void _updateAge(int newAge) {
-    setState(() {
-      _age = newAge;
-      _controller.text = '$_age';
-      _controller.selection = TextSelection.fromPosition(
-        TextPosition(offset: _controller.text.length),
-      );
-    });
+    if (_age != newAge || _controller.text != '$newAge') {
+      setState(() {
+        _age = newAge;
+        _controller.text = '$_age';
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: _controller.text.length),
+        );
+      });
+    }
   }
 
   void _increment() {
     if (_age < widget.max) {
+      HapticFeedback.selectionClick();
       _updateAge(_age + 1);
     }
   }
 
   void _decrement() {
     if (_age > widget.min) {
+      HapticFeedback.selectionClick();
       _updateAge(_age - 1);
     }
   }
@@ -102,11 +104,11 @@ class _AgeSpinBoxState extends State<AgeSpinBox> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Tombol Kurang (-)
+              // Tombol Kurang (-) dengan hold-to-repeat
               _StepButton(
                 icon: LucideIcons.minus,
                 enabled: canDecrement,
-                onTap: _decrement,
+                onStep: _decrement,
               ),
 
               // Bagian input & display angka
@@ -119,6 +121,7 @@ class _AgeSpinBoxState extends State<AgeSpinBox> {
                         controller: _controller,
                         focusNode: _focusNode,
                         keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
                         textAlign: TextAlign.center,
                         border: const Border(),
                         padding: EdgeInsets.zero,
@@ -134,7 +137,10 @@ class _AgeSpinBoxState extends State<AgeSpinBox> {
                             });
                           }
                         },
-                        onSubmitted: (_) => _normalizeInput(),
+                        onSubmitted: (_) {
+                          _focusNode.unfocus();
+                          _normalizeInput();
+                        },
                         style: appFont(
                           fontSize: 34,
                           fontWeight: FontWeight.w800,
@@ -155,16 +161,27 @@ class _AgeSpinBoxState extends State<AgeSpinBox> {
                 ),
               ),
 
-              // Tombol Tambah (+)
+              // Tombol Tambah (+) dengan hold-to-repeat
               _StepButton(
                 icon: LucideIcons.plus,
                 enabled: canIncrement,
-                onTap: _increment,
+                onStep: _increment,
               ),
             ],
           ),
         ),
-        const Gap(14),
+        const Gap(6),
+        Center(
+          child: Text(
+            'Rentang umur: ${widget.min} – ${widget.max} tahun',
+            style: appFont(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: AppColors.inkMuted.withValues(alpha: 0.7),
+            ),
+          ),
+        ),
+        const Gap(10),
         AppButton(
           label: 'Konfirmasi ($_age tahun)',
           trailingIcon: LucideIcons.arrowRight,
@@ -172,8 +189,8 @@ class _AgeSpinBoxState extends State<AgeSpinBox> {
           fontSize: 14,
           onTap: () {
             _focusNode.unfocus();
-            _normalizeInput();
-            widget.onConfirm(_age);
+            final finalAge = _normalizeInput();
+            widget.onConfirm(finalAge);
           },
         ),
       ],
@@ -185,12 +202,12 @@ class _StepButton extends StatefulWidget {
   const _StepButton({
     required this.icon,
     required this.enabled,
-    required this.onTap,
+    required this.onStep,
   });
 
   final IconData icon;
   final bool enabled;
-  final VoidCallback onTap;
+  final VoidCallback onStep;
 
   @override
   State<_StepButton> createState() => _StepButtonState();
@@ -198,14 +215,55 @@ class _StepButton extends StatefulWidget {
 
 class _StepButtonState extends State<_StepButton> {
   bool _pressed = false;
+  Timer? _initialHoldTimer;
+  Timer? _repeatTimer;
+
+  @override
+  void dispose() {
+    _stopTimers();
+    super.dispose();
+  }
+
+  void _stopTimers() {
+    _initialHoldTimer?.cancel();
+    _initialHoldTimer = null;
+    _repeatTimer?.cancel();
+    _repeatTimer = null;
+  }
+
+  void _startContinuousHold() {
+    _stopTimers();
+    _initialHoldTimer = Timer(const Duration(milliseconds: 320), () {
+      _repeatTimer = Timer.periodic(const Duration(milliseconds: 75), (_) {
+        if (!mounted || !widget.enabled) {
+          _stopTimers();
+          return;
+        }
+        widget.onStep();
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: widget.enabled ? (_) => setState(() => _pressed = true) : null,
-      onTapUp: widget.enabled ? (_) => setState(() => _pressed = false) : null,
-      onTapCancel: widget.enabled ? () => setState(() => _pressed = false) : null,
-      onTap: widget.enabled ? widget.onTap : null,
+      onTapDown: widget.enabled
+          ? (_) {
+              setState(() => _pressed = true);
+              _startContinuousHold();
+            }
+          : null,
+      onTapUp: widget.enabled
+          ? (_) {
+              setState(() => _pressed = false);
+              _stopTimers();
+            }
+          : null,
+      onTapCancel: () {
+        if (mounted) setState(() => _pressed = false);
+        _stopTimers();
+      },
+      onTap: widget.enabled ? widget.onStep : null,
       behavior: HitTestBehavior.opaque,
       child: AnimatedScale(
         scale: _pressed ? 0.92 : 1.0,
@@ -238,7 +296,9 @@ class _StepButtonState extends State<_StepButton> {
           child: Icon(
             widget.icon,
             size: 20,
-            color: widget.enabled ? AppColors.brand : AppColors.inkMuted.withValues(alpha: 0.35),
+            color: widget.enabled
+                ? AppColors.brand
+                : AppColors.inkMuted.withValues(alpha: 0.35),
           ),
         ),
       ),
