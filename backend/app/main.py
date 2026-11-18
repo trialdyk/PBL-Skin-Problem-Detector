@@ -32,7 +32,7 @@ app = FastAPI(
         "Protected routes require Authorization: Bearer <access_token> "
         "(Authorize in Swagger). /users/me reads and updates the caller's profile. "
         "POST /ml/predict runs the shipped CNN on 1-3 face photos and returns a GEA grade. "
-        "POST /history saves a completed scan (photos + interview + pending recommendation). "
+        "POST /history saves a completed scan (photos + interview) and queues LLM recommendations. "
         "Items is a placeholder."
     ),
     openapi_tags=[
@@ -51,7 +51,7 @@ app = FastAPI(
             "name": "history",
             "description": (
                 "Protected. Persist and list face-scan history with local photo storage "
-                "and a pending recommendation slot for a future LLM service."
+                "and async LLM-generated skincare recommendations."
             ),
         },
         {

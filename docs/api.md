@@ -70,6 +70,12 @@ Daftar resmi = kunci `paths` di `backend/openapi.json`. Saat export terakhir:
 | `PATCH` | `/users/me` | Bearer | Ubah nama dan/atau email pengguna |
 | `GET` | `/items/status` | Bearer | Placeholder |
 | `POST` | `/ml/predict` | Bearer | Prediksi keparahan jerawat (CNN) → grade GEA |
+| `POST` | `/history` | Bearer | Simpan hasil scan (foto + interview) & antrekan rekomendasi LLM |
+| `GET` | `/history` | Bearer | Daftar riwayat scan milik pengguna |
+| `GET` | `/history/{history_id}` | Bearer | Detail riwayat scan & status/teks rekomendasi LLM |
+| `GET` | `/history/{history_id}/photos/{angle}` | Bearer | Unduh foto riwayat (`front`/`left`/`right`) |
+| `POST` | `/history/{history_id}/recommendation/retry` | Bearer | Ulangi generasi rekomendasi LLM jika `pending`/`failed` |
+| `DELETE` | `/history/{history_id}` | Bearer | Hapus riwayat scan beserta foto |
 
 Tanpa header / token invalid / user nonaktif → `401` dengan
 `detail`: `Sesi tidak valid atau sudah berakhir. Silakan masuk kembali.`
@@ -156,6 +162,10 @@ Ini tidak muncul di OpenAPI.
 | `ML_MODEL_PATH` | `app/ml/artifacts/dermascan_custom_cnn.tflite` | Path model; relatif dihitung dari `backend/`. |
 | `ML_INPUT_SIZE` | `160` | Sisi gambar yang di-*resize* (harus sama dengan training). |
 | `ML_MAX_UPLOAD_MB` | `10` | Batas ukuran per berkas di `/ml/predict`. |
+| `LLM_BASE_URL` | `https://api.inferhub.dev/v1` | Base URL endpoint kompatibel OpenAI untuk rekomendasi LLM. |
+| `LLM_API_KEY` | kosong | API key endpoint LLM. Jika kosong, rekomendasi tetap `pending`. |
+| `LLM_MODEL` | `ocg/glm-5.1` | Nama model LLM yang dipanggil di `POST /history` (background task). |
+| `LLM_TIMEOUT_SECONDS` | `45` | Batas waktu panggilan API LLM (detik). |
 
 ## Respons 500
 

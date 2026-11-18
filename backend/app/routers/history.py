@@ -4,9 +4,19 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.dependencies import get_current_user, get_db
 from app.models import User
@@ -21,7 +31,7 @@ from app.schemas.history import (
     HistoryPhotoUrls,
     RecommendationOut,
 )
-from app.services import history_service
+from app.services import history_service, llm_service
 
 router = APIRouter(
     prefix="/history",
@@ -90,6 +100,7 @@ def _detail(history: ScanHistory) -> HistoryDetail:
     },
 )
 async def create_history(
+    background_tasks: BackgroundTasks,
     front: UploadFile = File(..., description="Front selfie"),
     left: UploadFile = File(..., description="Left selfie"),
     right: UploadFile = File(..., description="Right selfie"),
@@ -103,7 +114,7 @@ async def create_history(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> HistoryCreateResponse:
-    """Persist three photos on disk and create history + pending recommendation."""
+    """Persist three photos on disk, create pending recommendation, and queue LLM generation."""
     photos = {
         "front": (await front.read(), front.filename, front.content_type),
         "left": (await left.read(), left.filename, left.content_type),
@@ -141,6 +152,14 @@ async def create_history(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Gagal menyimpan riwayat: {exc}",
         ) from None
+
+    if llm_service.is_configured():
+        session_factory = sessionmaker(bind=db.get_bind(), autocommit=False, autoflush=False)
+        background_tasks.add_task(
+            history_service.generate_and_save_recommendation,
+            history_id=history.id,
+            session_factory=session_factory,
+        )
 
     return HistoryCreateResponse(**_detail(history).model_dump())
 
@@ -228,6 +247,50 @@ def get_history_photo(
         ".jpeg": "image/jpeg",
     }.get(path.suffix.lower(), "application/octet-stream")
     return FileResponse(path, media_type=media, filename=path.name)
+
+
+@router.post(
+    "/{history_id}/recommendation/retry",
+    summary="Retry LLM recommendation generation for a history entry",
+    responses={
+        **UNAUTHORIZED_RESPONSE,
+        404: {"model": ErrorResponse, "description": "History not found."},
+        503: {"model": ErrorResponse, "description": "LLM recommendation service is not configured."},
+    },
+)
+def retry_recommendation(
+    history_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> HistoryDetail:
+    """Re-queue LLM recommendation generation when status is pending or failed."""
+    try:
+        history, should_generate = history_service.prepare_recommendation_retry(
+            db,
+            user=current_user,
+            history_id=history_id,
+        )
+    except history_service.HistoryNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Riwayat tidak ditemukan.",
+        ) from None
+    except llm_service.LlmNotConfiguredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from None
+
+    if should_generate:
+        session_factory = sessionmaker(bind=db.get_bind(), autocommit=False, autoflush=False)
+        background_tasks.add_task(
+            history_service.generate_and_save_recommendation,
+            history_id=history.id,
+            session_factory=session_factory,
+        )
+
+    return _detail(history)
 
 
 @router.delete(

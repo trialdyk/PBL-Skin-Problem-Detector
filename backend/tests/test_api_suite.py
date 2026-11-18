@@ -38,6 +38,7 @@ EXPECTED_PATHS = {
     "/history",
     "/history/{history_id}",
     "/history/{history_id}/photos/{angle}",
+    "/history/{history_id}/recommendation/retry",
     "/health",
 }
 

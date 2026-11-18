@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     history_upload_dir: str = "uploads/history"
     history_max_upload_mb: int = 10
 
+    # LLM recommendation (OpenAI-compatible endpoint, e.g. InferHub).
+    llm_base_url: str = "https://api.inferhub.dev/v1"
+    llm_api_key: str = ""
+    llm_model: str = "ocg/glm-5.1"
+    llm_timeout_seconds: float = 45.0
+
 
     # SMTP — used to send registration verification codes (Gmail app password, etc.).
     smtp_host: str = "smtp.gmail.com"
@@ -69,6 +75,15 @@ class Settings(BaseSettings):
     @property
     def smtp_configured(self) -> bool:
         return bool(self.smtp_host and self.smtp_user and self.smtp_pass and self.smtp_sender)
+
+    @property
+    def llm_configured(self) -> bool:
+        """Whether the OpenAI-compatible LLM endpoint has a base URL, key, and model."""
+        return bool(
+            self.llm_base_url.strip()
+            and self.llm_api_key.strip()
+            and self.llm_model.strip()
+        )
 
     @computed_field  # type: ignore[prop-decorator]
     @property

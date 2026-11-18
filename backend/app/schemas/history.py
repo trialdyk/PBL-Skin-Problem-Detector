@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 
 class RecommendationOut(BaseModel):
-    """Embedded recommendation slot (LLM filled later)."""
+    """Embedded LLM recommendation status and text."""
 
     status: str
     text: str | None = None

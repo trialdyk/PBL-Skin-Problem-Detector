@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DermaScan Backend",
-    "description": "DermaScan backend API for facial skin-condition analysis. Public: POST /auth/login, POST /auth/register, POST /auth/verify-email, POST /auth/resend-verification, POST /auth/google, GET /health. Protected routes require Authorization: Bearer <access_token> (Authorize in Swagger). /users/me reads and updates the caller's profile. POST /ml/predict runs the shipped CNN on 1-3 face photos and returns a GEA grade. POST /history saves a completed scan (photos + interview + pending recommendation). Items is a placeholder.",
+    "description": "DermaScan backend API for facial skin-condition analysis. Public: POST /auth/login, POST /auth/register, POST /auth/verify-email, POST /auth/resend-verification, POST /auth/google, GET /health. Protected routes require Authorization: Bearer <access_token> (Authorize in Swagger). /users/me reads and updates the caller's profile. POST /ml/predict runs the shipped CNN on 1-3 face photos and returns a GEA grade. POST /history saves a completed scan (photos + interview) and queues LLM recommendations. Items is a placeholder.",
     "version": "0.1.0"
   },
   "paths": {
@@ -485,7 +485,7 @@
           "history"
         ],
         "summary": "Save a completed scan to history (one-shot)",
-        "description": "Persist three photos on disk and create history + pending recommendation.",
+        "description": "Persist three photos on disk, create pending recommendation, and queue LLM generation.",
         "operationId": "create_history_history_post",
         "security": [
           {
@@ -813,6 +813,85 @@
           },
           "404": {
             "description": "Photo or history not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/history/{history_id}/recommendation/retry": {
+      "post": {
+        "tags": [
+          "history"
+        ],
+        "summary": "Retry LLM recommendation generation for a history entry",
+        "description": "Re-queue LLM recommendation generation when status is pending or failed.",
+        "operationId": "retry_recommendation_history__history_id__recommendation_retry_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "history_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "History Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired, or inactive-user bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "History not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "LLM recommendation service is not configured.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1693,7 +1772,7 @@
           "status"
         ],
         "title": "RecommendationOut",
-        "description": "Embedded recommendation slot (LLM filled later)."
+        "description": "Embedded LLM recommendation status and text."
       },
       "RegisterPendingResponse": {
         "properties": {
@@ -2015,7 +2094,7 @@
     },
     {
       "name": "history",
-      "description": "Protected. Persist and list face-scan history with local photo storage and a pending recommendation slot for a future LLM service."
+      "description": "Protected. Persist and list face-scan history with local photo storage and async LLM-generated skincare recommendations."
     },
     {
       "name": "items",

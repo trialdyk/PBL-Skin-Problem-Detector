@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, hash_password
 from app.models import User
-from app.services import history_service
+from app.services import history_service, llm_service
 
 TINY_PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -147,3 +147,128 @@ def test_create_rejects_bad_source(
     data["result_source"] = "magic"
     response = client.post("/history", headers=auth_header, data=data, files=_files())
     assert response.status_code == 400
+
+
+def test_create_history_runs_background_llm_recommendation(
+    client: TestClient,
+    auth_header: dict[str, str],
+    history_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLM_API_KEY", "sk-test-key")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    captured: dict = {}
+
+    def fake_generate(**kwargs):
+        captured.update(kwargs)
+        return (
+            "1. Ringkasan Kondisi\nJerawat ringan pada kulit kombinasi.",
+            {"model": "ocg/glm-5.1", "latency_ms": 120.0},
+        )
+
+    monkeypatch.setattr(llm_service, "generate_recommendation", fake_generate)
+
+    try:
+        created = client.post(
+            "/history",
+            headers=auth_header,
+            data=_create_payload(),
+            files=_files(),
+        )
+        assert created.status_code == 201, created.text
+        body = created.json()
+        history_id = body["id"]
+        # Initial response is returned immediately before the background task runs.
+        assert body["recommendation"]["status"] == "pending"
+
+        detail = client.get(f"/history/{history_id}", headers=auth_header)
+        assert detail.status_code == 200
+        rec = detail.json()["recommendation"]
+        assert rec["status"] == "ready"
+        assert "Jerawat ringan" in rec["text"]
+        assert captured["grade"] == 2
+        assert captured["interview"]["skin_type"] == "combination"
+    finally:
+        get_settings.cache_clear()
+
+
+def test_background_llm_failure_marks_failed_and_retry_recovers(
+    client: TestClient,
+    auth_header: dict[str, str],
+    db: Session,
+    history_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLM_API_KEY", "sk-test-key")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+
+    def boom(**kwargs):
+        raise llm_service.LlmGenerationError("provider down")
+
+    monkeypatch.setattr(llm_service, "generate_recommendation", boom)
+
+    try:
+        created = client.post(
+            "/history",
+            headers=auth_header,
+            data=_create_payload(),
+            files=_files(),
+        )
+        assert created.status_code == 201
+        history_id = created.json()["id"]
+
+        failed_detail = client.get(f"/history/{history_id}", headers=auth_header)
+        assert failed_detail.status_code == 200
+        assert failed_detail.json()["recommendation"]["status"] == "failed"
+        assert failed_detail.json()["recommendation"]["text"] is None
+
+        other = _auth_for(db, "stranger@example.com")
+        assert (
+            client.post(f"/history/{history_id}/recommendation/retry", headers=other).status_code
+            == 404
+        )
+
+        monkeypatch.setattr(
+            llm_service,
+            "generate_recommendation",
+            lambda **kwargs: ("Rekomendasi berhasil dibuat ulang.", {"model": "ocg/glm-5.1"}),
+        )
+        retried = client.post(f"/history/{history_id}/recommendation/retry", headers=auth_header)
+        assert retried.status_code == 200
+        assert retried.json()["recommendation"]["status"] == "pending"
+
+        ready_detail = client.get(f"/history/{history_id}", headers=auth_header)
+        assert ready_detail.status_code == 200
+        assert ready_detail.json()["recommendation"]["status"] == "ready"
+        assert ready_detail.json()["recommendation"]["text"] == "Rekomendasi berhasil dibuat ulang."
+    finally:
+        get_settings.cache_clear()
+
+
+def test_retry_recommendation_returns_503_when_llm_not_configured(
+    client: TestClient,
+    auth_header: dict[str, str],
+    history_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLM_API_KEY", "")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    try:
+        created = client.post(
+            "/history",
+            headers=auth_header,
+            data=_create_payload(),
+            files=_files(),
+        )
+        history_id = created.json()["id"]
+
+        resp = client.post(f"/history/{history_id}/recommendation/retry", headers=auth_header)
+        assert resp.status_code == 503
+    finally:
+        get_settings.cache_clear()

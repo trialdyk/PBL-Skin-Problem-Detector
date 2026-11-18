@@ -3,21 +3,27 @@
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import uuid
 from pathlib import Path
 from typing import Any
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
 from app.models.scan_history import ScanHistory, ScanRecommendation
 from app.models.user import User
+from app.services import llm_service
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_ANGLES = ("front", "left", "right")
 ALLOWED_SOURCES = frozenset({"ml", "rule_based"})
 RECOMMENDATION_PENDING = "pending"
+RECOMMENDATION_READY = "ready"
+RECOMMENDATION_FAILED = "failed"
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
@@ -233,3 +239,76 @@ def delete_history(db: Session, *, user: User, history_id: uuid.UUID) -> None:
     db.commit()
     if directory.exists():
         shutil.rmtree(directory, ignore_errors=True)
+
+
+def prepare_recommendation_retry(
+    db: Session,
+    *,
+    user: User,
+    history_id: uuid.UUID,
+) -> tuple[ScanHistory, bool]:
+    """Reset a pending/failed recommendation to ``pending`` before re-queuing.
+
+    Returns ``(history, should_generate)``. If a recommendation is already ready,
+    ``should_generate`` is False and the existing row is returned unchanged.
+    """
+    history = get_history(db, user=user, history_id=history_id)
+    rec = history.recommendation
+    if rec is not None and rec.status == RECOMMENDATION_READY and rec.text:
+        return history, False
+
+    if not llm_service.is_configured():
+        raise llm_service.LlmNotConfiguredError("Layanan rekomendasi AI belum aktif.")
+
+    if rec is None:
+        rec = ScanRecommendation(history_id=history.id, status=RECOMMENDATION_PENDING)
+        history.recommendation = rec
+        db.add(rec)
+    else:
+        rec.status = RECOMMENDATION_PENDING
+        rec.text = None
+        rec.meta_json = None
+
+    db.commit()
+    db.refresh(history)
+    return history, True
+
+
+def generate_and_save_recommendation(
+    *,
+    history_id: uuid.UUID,
+    session_factory: sessionmaker[Session],
+) -> None:
+    """Background worker that populates ``scan_recommendations`` via the LLM."""
+    if not llm_service.is_configured():
+        return
+
+    with session_factory() as db:
+        history = db.get(ScanHistory, history_id)
+        if history is None:
+            return
+
+        rec = history.recommendation
+        if rec is None:
+            rec = ScanRecommendation(history_id=history.id, status=RECOMMENDATION_PENDING)
+            db.add(rec)
+
+        try:
+            text, meta = llm_service.generate_recommendation(
+                grade=history.grade,
+                grade_label=history.grade_label,
+                top_label=history.top_label,
+                result_source=history.result_source,
+                interview=history.interview_json,
+                aggregate=history.aggregate_json,
+            )
+            rec.status = RECOMMENDATION_READY
+            rec.text = text
+            rec.meta_json = meta
+        except Exception as exc:
+            logger.warning("LLM recommendation failed for history %s: %s", history_id, exc)
+            rec.status = RECOMMENDATION_FAILED
+            rec.text = None
+            rec.meta_json = {"error": str(exc)[:500]}
+
+        db.commit()
