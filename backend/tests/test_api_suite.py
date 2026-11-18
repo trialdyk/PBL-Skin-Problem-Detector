@@ -319,7 +319,7 @@ def test_full_auth_flow_then_protected_calls(
     codes: list[str] = []
     monkeypatch.setattr(
         "app.services.email_service.send_verification_code",
-        lambda to, code, settings=None: codes.append(code),
+        lambda to, code, *, full_name=None, settings=None: codes.append(code),
     )
     registered = client.post(
         "/auth/register",
