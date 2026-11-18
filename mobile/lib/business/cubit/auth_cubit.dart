@@ -308,7 +308,7 @@ class AuthCubit extends Cubit<AuthState> {
       emit(
         state.copyWith(
           errorMessage:
-              'Kata sandi baru harus berbeda dari kata sandi saat ini.',
+              'Kata sandi baru tidak boleh sama dengan kata sandi saat ini.',
         ),
       );
       return false;

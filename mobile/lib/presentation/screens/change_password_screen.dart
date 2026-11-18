@@ -32,25 +32,35 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   void _validate() {
     _errors.clear();
-    if (_current.text.isEmpty) {
+    final currentText = _current.text;
+    final nextText = _next.text;
+    final confirmText = _confirm.text;
+
+    if (currentText.isEmpty) {
       _errors['current'] = 'Kata sandi saat ini tidak boleh kosong';
     }
-    if (_next.text.length < 8 || _next.text.length > 128) {
-      _errors['new'] = 'Kata sandi baru harus 8–128 karakter';
-    } else if (_next.text == _current.text) {
+
+    if (nextText.isNotEmpty &&
+        currentText.isNotEmpty &&
+        nextText == currentText) {
       _errors['new'] =
-          'Kata sandi baru harus berbeda dari kata sandi saat ini';
+          'Kata sandi baru tidak boleh sama dengan kata sandi saat ini';
+    } else if (nextText.length < 8 || nextText.length > 128) {
+      _errors['new'] = 'Kata sandi baru harus 8–128 karakter';
     }
-    if (_confirm.text.isEmpty) {
+
+    if (confirmText.isEmpty) {
       _errors['confirm'] = 'Konfirmasi kata sandi tidak boleh kosong';
-    } else if (_confirm.text != _next.text) {
+    } else if (confirmText != nextText) {
       _errors['confirm'] = 'Konfirmasi kata sandi tidak cocok';
     }
   }
 
   void _onChanged(String _) {
     context.read<AuthCubit>().clearError();
-    if (_submitted) setState(_validate);
+    if (_submitted || _errors.isNotEmpty) {
+      setState(_validate);
+    }
   }
 
   void _submit() {

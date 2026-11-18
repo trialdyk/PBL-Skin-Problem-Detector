@@ -151,4 +151,36 @@ void main() {
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+    'ChangePasswordScreen menolak kata sandi baru yang sama dengan kata sandi saat ini',
+    (tester) async {
+      await _loginToProfile(tester);
+
+      await tester.tap(find.text('Ubah kata sandi'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const ValueKey('change-password-current')),
+        'skinscan123',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('change-password-new')),
+        'skinscan123',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('change-password-confirm')),
+        'skinscan123',
+      );
+
+      await tester.ensureVisible(find.text('Simpan Kata Sandi'));
+      await tester.tap(find.text('Simpan Kata Sandi'));
+      await tester.pump();
+
+      expect(
+        find.text('Kata sandi baru tidak boleh sama dengan kata sandi saat ini'),
+        findsOneWidget,
+      );
+    },
+  );
 }
