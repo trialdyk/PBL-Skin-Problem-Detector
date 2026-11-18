@@ -195,17 +195,15 @@ void handleBottomNavTap(
     case NavIndex.photo:
       if (current != NavIndex.photo) context.push('/scan');
     case NavIndex.interview:
-      if (scan.state.phase == ScanPhase.interviewing) {
-        context.go('/scan/interview');
-      } else if (scan.state.session.hasAllPhotos) {
-        scan.continueToInterview();
-        context.go('/scan/interview');
-      } else {
-        showHint(context, 'Ambil ketiga foto wajah terlebih dahulu.');
+      // Ikon clipboard = Riwayat (selalu bisa dibuka).
+      if (current != NavIndex.interview) {
+        context.go('/history');
       }
     case NavIndex.report:
-      if (current != NavIndex.report) {
-        context.go('/history');
+      if (scan.state.result != null) {
+        context.push('/scan/result');
+      } else {
+        showHint(context, 'Belum ada hasil. Selesaikan pemeriksaan dahulu.');
       }
   }
 }

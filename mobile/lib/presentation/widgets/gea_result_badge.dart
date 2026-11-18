@@ -28,7 +28,7 @@ class GeaResultBadge extends StatelessWidget {
               borderRadius: BorderRadius.circular(99),
             ),
             child: Text(
-              'Global Evaluation of Acne',
+              'Investigator\'s Global Assessment',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,

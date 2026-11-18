@@ -107,7 +107,7 @@ class ScanCubit extends Cubit<ScanState> {
     ));
     await _pushBot(
       'Halo! Saya akan membantu membuat profil kulit Anda. '
-      'Jawaban ini membantu diagnosa GEA lebih akurat.',
+      'Jawaban ini membantu diagnosa IGA lebih akurat.',
     );
     await _askCurrentQuestion();
   }

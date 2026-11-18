@@ -237,7 +237,7 @@ class _GradeHero extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'Tingkat GEA',
+            'Tingkat IGA',
             style: appFont(
               fontSize: 13,
               fontWeight: FontWeight.w600,

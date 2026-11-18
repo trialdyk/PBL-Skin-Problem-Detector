@@ -211,7 +211,7 @@ class _ScanPhotoScreenState extends State<ScanPhotoScreen> {
                               const Gap(8),
                               Text(
                                 'Posisikan wajah Anda pada pencahayaan alami tanpa '
-                                'makeup atau filter untuk hasil kalkulasi skala GEA '
+                                'makeup atau filter untuk hasil kalkulasi skala IGA '
                                 'yang akurat.',
                                 style: appFont(
                                   fontSize: 13.5,
@@ -956,7 +956,7 @@ class _GeaTip extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tips Algoritma GEA',
+                  'Tips Algoritma IGA',
                   style: appFont(fontSize: 13, fontWeight: FontWeight.w700),
                 ),
                 const Gap(3),

@@ -33,11 +33,11 @@ class _HistoryView extends StatelessWidget {
       backgroundColor: AppColors.page,
       footers: [
         AppBottomNav(
-          currentIndex: NavIndex.report,
+          currentIndex: NavIndex.interview,
           onChanged: (index) => handleBottomNavTap(
             context,
             index,
-            current: NavIndex.report,
+            current: NavIndex.interview,
           ),
           onProfile: () => context.go('/home'),
         ),
@@ -194,7 +194,7 @@ class _HistoryCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    'GEA ${item.grade} · ${item.gradeLabel}',
+                    'IGA ${item.grade} · ${item.gradeLabel}',
                     style: appFont(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,

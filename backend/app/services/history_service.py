@@ -34,10 +34,29 @@ class HistoryValidationError(HistoryError):
     """Invalid multipart fields or files."""
 
 
+class HistoryStorageError(HistoryError):
+    """Disk write failed (permissions / full disk)."""
+
+
 def upload_root() -> Path:
     """Absolute directory for history photos."""
     raw = Path(get_settings().history_upload_dir)
     return raw if raw.is_absolute() else _BACKEND_ROOT / raw
+
+
+def ensure_upload_root() -> Path:
+    """Create the upload root if missing; raise if not writable."""
+    root = upload_root()
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+        probe = root / ".write_test"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+    except OSError as exc:
+        raise HistoryStorageError(
+            f"Folder upload tidak bisa ditulis: {root}",
+        ) from exc
+    return root
 
 
 def photo_api_path(history_id: uuid.UUID, angle: str) -> str:
@@ -110,12 +129,13 @@ def create_history(
     aggregate = _parse_json_field(aggregate_raw, field="aggregate", required=False)
     assert interview is not None
 
+    ensure_upload_root()
     history_id = uuid.uuid4()
     directory = _session_dir(user.id, history_id)
-    directory.mkdir(parents=True, exist_ok=True)
 
     paths: dict[str, str] = {}
     try:
+        directory.mkdir(parents=True, exist_ok=True)
         for angle in ALLOWED_ANGLES:
             data, filename, content_type = photos[angle]
             ext = _ext_for(filename, content_type)
@@ -130,7 +150,7 @@ def create_history(
             user_id=user.id,
             model_id=model_id.strip() or "unknown",
             grade=grade,
-            grade_label=grade_label.strip() or f"GEA {grade}",
+            grade_label=grade_label.strip() or f"IGA {grade}",
             top_label=top_label.strip() if top_label else None,
             result_source=result_source,
             aggregate_json=aggregate,
@@ -138,16 +158,24 @@ def create_history(
             photo_front_path=paths["front"],
             photo_left_path=paths["left"],
             photo_right_path=paths["right"],
+            recommendation=ScanRecommendation(status=RECOMMENDATION_PENDING),
         )
-        recommendation = ScanRecommendation(
-            history_id=history_id,
-            status=RECOMMENDATION_PENDING,
-        )
-        history.recommendation = recommendation
         db.add(history)
         db.commit()
         db.refresh(history)
         return history
+    except HistoryStorageError:
+        db.rollback()
+        if directory.exists():
+            shutil.rmtree(directory, ignore_errors=True)
+        raise
+    except OSError as exc:
+        db.rollback()
+        if directory.exists():
+            shutil.rmtree(directory, ignore_errors=True)
+        raise HistoryStorageError(
+            f"Gagal menulis foto ke disk: {exc}",
+        ) from exc
     except Exception:
         db.rollback()
         if directory.exists():

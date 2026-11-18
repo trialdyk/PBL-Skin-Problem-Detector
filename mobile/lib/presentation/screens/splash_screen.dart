@@ -340,7 +340,7 @@ class _BottomCtaCardState extends State<_BottomCtaCard> {
     ),
     (
       icon: LucideIcons.activity,
-      title: 'Hasil skala GEA',
+      title: 'Hasil skala IGA',
       body: 'Tingkat keparahan jerawat 0–5 beserta penjelasannya.',
     ),
   ];

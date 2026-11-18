@@ -130,6 +130,17 @@ async def create_history(
             else status.HTTP_400_BAD_REQUEST
         )
         raise HTTPException(status_code=code, detail=message) from None
+    except history_service.HistoryStorageError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from None
+    except Exception as exc:
+        # Surface DB/migrate mistakes instead of a bare nginx "Internal Server Error".
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Gagal menyimpan riwayat: {exc}",
+        ) from None
 
     return HistoryCreateResponse(**_detail(history).model_dump())
 

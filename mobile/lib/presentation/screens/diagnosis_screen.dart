@@ -99,7 +99,7 @@ class DiagnosisScreen extends StatelessWidget {
                               const Gap(16),
                             ],
                             Text(
-                              'Tingkat GEA Anda',
+                              'Tingkat IGA Anda',
                               textAlign: TextAlign.center,
                               style: appFont(
                                 fontSize: 24,
@@ -109,7 +109,7 @@ class DiagnosisScreen extends StatelessWidget {
                             ),
                             const Gap(6),
                             Text(
-                              'Global Evaluation of Acne: 0–1 (ringan) hingga '
+                              'Investigator\'s Global Assessment: 0–1 (ringan) hingga '
                               '4–5 (sangat berat).',
                               textAlign: TextAlign.center,
                               style: appFont(

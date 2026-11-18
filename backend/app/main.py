@@ -1,13 +1,29 @@
 """DermaScan FastAPI application entry point."""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.core.config import get_settings
 from app.routers import auth, history, items, ml, users
+from app.services import history_service
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Ensure history upload directory exists when the API boots."""
+    try:
+        history_service.ensure_upload_root()
+    except history_service.HistoryStorageError:
+        # Boot anyway; POST /history will return a clear 500 until disk is fixed.
+        pass
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.app_name,
     description=(
         "DermaScan backend API for facial skin-condition analysis. "

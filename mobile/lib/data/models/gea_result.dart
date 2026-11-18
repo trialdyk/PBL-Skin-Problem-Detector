@@ -31,7 +31,7 @@ class GeaResult extends Equatable {
   final String description;
   final ResultSource source;
 
-  String get badgeTitle => 'GEA $grade';
+  String get badgeTitle => 'IGA $grade';
   String get badgeSubtitle => 'TINGKAT ${labelId.toUpperCase()}';
 
   @override

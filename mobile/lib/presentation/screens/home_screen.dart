@@ -4,12 +4,15 @@ import 'package:pbl_skin_problem_detector/business/cubit/auth_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/home_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/home_state.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_cubit.dart';
+import 'package:pbl_skin_problem_detector/data/models/history_item.dart';
+import 'package:pbl_skin_problem_detector/data/services/history/history.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/articles_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/profile_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_bottom_nav.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
+import 'package:pbl_skin_problem_detector/presentation/widgets/auth_network_image.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Indeks tab di [HomeCubit]. Profil & Artikel tidak ada di bottom nav;
@@ -175,12 +178,12 @@ class _HomeTab extends StatelessWidget {
                     ),
                     const Gap(24),
                     _SectionHeader(
-                      title: 'Direkomendasikan',
+                      title: 'Riwayat terakhir',
                       action: 'Lihat semua',
-                      onAction: () => showComingSoon(context),
+                      onAction: () => context.go('/history'),
                     ),
                     const Gap(12),
-                    const _RecommendedCard(),
+                    const _LatestHistoryCard(),
                   ],
                 ),
               ),
@@ -279,7 +282,7 @@ class _RoutineCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Pemeriksaan GEA',
+                  'Pemeriksaan IGA',
                   style: appFont(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
                 const Gap(2),
@@ -539,64 +542,232 @@ class _ForYouCard extends StatelessWidget {
   }
 }
 
-class _RecommendedCard extends StatelessWidget {
-  const _RecommendedCard();
+class _LatestHistoryCard extends StatefulWidget {
+  const _LatestHistoryCard();
+
+  @override
+  State<_LatestHistoryCard> createState() => _LatestHistoryCardState();
+}
+
+class _LatestHistoryCardState extends State<_LatestHistoryCard> {
+  Future<HistoryItem?>? _future;
+  var _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    final history = context.read<HistoryService>();
+    _future = _loadLatest(history);
+  }
+
+  Future<HistoryItem?> _loadLatest(HistoryService history) async {
+    try {
+      final result = await history.list(limit: 1);
+      if (result.items.isEmpty) return null;
+      return result.items.first;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _relativeWhen(DateTime value) {
+    final local = value.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(local.year, local.month, local.day);
+    final h = local.hour.toString().padLeft(2, '0');
+    final m = local.minute.toString().padLeft(2, '0');
+    if (day == today) return 'Hari ini · $h:$m';
+    if (day == today.subtract(const Duration(days: 1))) {
+      return 'Kemarin · $h:$m';
+    }
+    return '${local.day}/${local.month}/${local.year} · $h:$m';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.asset(
-              'assets/images/acne_people.png',
-              width: 64,
-              height: 64,
-              fit: BoxFit.cover,
-              alignment: const Alignment(0, -0.15),
-            ),
-          ),
-          const Gap(14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final future = _future;
+    if (future == null) {
+      return const SizedBox(height: 96);
+    }
+    return FutureBuilder<HistoryItem?>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _SoftCard(
+            padding: const EdgeInsets.all(18),
+            child: Row(
               children: [
-                Text(
-                  'Hasil GEA terakhir',
-                  style: appFont(fontSize: 14, fontWeight: FontWeight.w700),
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: AppColors.muted,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
                 ),
-                const Gap(4),
-                Text(
-                  'Skor 2 · Ringan',
-                  style: appFont(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.brand,
+                const Gap(14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 12,
+                        width: 120,
+                        decoration: BoxDecoration(
+                          color: AppColors.muted,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      const Gap(10),
+                      Container(
+                        height: 10,
+                        width: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.muted,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-          GestureDetector(
-            onTap: () => showComingSoon(context),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                color: AppColors.brand,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                LucideIcons.plus,
-                size: 20,
-                color: AppColors.white,
-              ),
+          );
+        }
+
+        final item = snapshot.data;
+        if (item == null) {
+          return _SoftCard(
+            onTap: () => context.push('/scan'),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandSoft,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Icon(
+                    LucideIcons.scanFace,
+                    color: AppColors.brand,
+                    size: 26,
+                  ),
+                ),
+                const Gap(14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Belum ada riwayat',
+                        style: appFont(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Gap(4),
+                      Text(
+                        'Scan wajah untuk menyimpan hasil IGA di sini',
+                        style: appFont(
+                          fontSize: 12.5,
+                          color: AppColors.inkMuted,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  LucideIcons.chevronRight,
+                  size: 18,
+                  color: AppColors.brand,
+                ),
+              ],
             ),
+          );
+        }
+
+        final gradeColor = AppColors.gradeColor(item.grade);
+        return _SoftCard(
+          onTap: () => context.push('/history/${item.id}'),
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              AuthNetworkImage(
+                path: item.photos.front,
+                width: 72,
+                height: 72,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              const Gap(14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _relativeWhen(item.createdAt),
+                      style: appFont(
+                        fontSize: 11.5,
+                        color: AppColors.inkMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Gap(4),
+                    Text(
+                      'IGA ${item.grade} · ${item.gradeLabel}',
+                      style: appFont(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const Gap(8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: gradeColor.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        item.resultSource == 'ml'
+                            ? 'Analisis foto'
+                            : 'Dari interview',
+                        style: appFont(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: gradeColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Gap(8),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.brandSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  LucideIcons.chevronRight,
+                  size: 18,
+                  color: AppColors.brand,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

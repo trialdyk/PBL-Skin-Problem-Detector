@@ -112,11 +112,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const Gap(12),
-          Text(
-            'Sesi hanya tersimpan di memori aplikasi.',
-            textAlign: TextAlign.center,
-            style: appFont(fontSize: 11.5, color: AppColors.inkMuted),
-          ),
         ],
       ),
     );

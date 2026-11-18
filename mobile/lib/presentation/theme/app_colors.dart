@@ -27,7 +27,7 @@ abstract final class AppColors {
   static const Color cameraOverlay = Color(0xFF09090B);
   static const Color cameraMuted = Color(0xFFA1A1AA);
 
-  /// Warna tingkat keparahan GEA 0–5 (hijau → merah tua).
+  /// Warna tingkat keparahan IGA 0–5 (hijau → merah tua).
   static const List<Color> grade = [
     Color(0xFF86C99B),
     Color(0xFFB7C77A),

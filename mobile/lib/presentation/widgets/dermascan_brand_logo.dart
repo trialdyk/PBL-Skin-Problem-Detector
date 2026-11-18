@@ -1,7 +1,7 @@
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-/// Lockup horizontal DermaScan (tanpa tagline GEA).
+/// Lockup horizontal DermaScan (tanpa tagline IGA).
 /// Teks wordmark di-reveal kiri → kanan lewat [reveal].
 class DermaScanBrandLogo extends StatelessWidget {
   const DermaScanBrandLogo({

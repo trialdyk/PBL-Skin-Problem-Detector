@@ -18,8 +18,8 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
   static const _featured = <ArticleItem>[
     ArticleItem(
       category: 'Edukasi',
-      badge: 'Update GEA',
-      title: 'Mengenal Skala GEA untuk Jerawat',
+      badge: 'Update IGA',
+      title: 'Mengenal Skala IGA untuk Jerawat',
       body:
           'Bagaimana dokter menilai tingkat keparahan jerawat dari grade 0 hingga 5 secara objektif.',
       readTime: '3 mnt',
@@ -35,7 +35,7 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
       badge: 'Panduan Scan',
       title: 'Cara Scan Wajah yang Benar',
       body:
-          'Panduan selfie depan, kiri, dan kanan agar analisis GEA lebih akurat.',
+          'Panduan selfie depan, kiri, dan kanan agar analisis IGA lebih akurat.',
       readTime: '4 mnt',
       image: 'assets/images/3791190.png',
     ),

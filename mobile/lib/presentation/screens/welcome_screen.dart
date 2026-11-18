@@ -31,7 +31,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     ),
     (
       LucideIcons.activity,
-      'Hasil skala GEA',
+      'Hasil skala IGA',
       'Tingkat keparahan jerawat 0–5 beserta penjelasannya.',
     ),
   ];
