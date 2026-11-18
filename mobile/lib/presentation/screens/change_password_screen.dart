@@ -63,18 +63,18 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     setState(() {
       _submitted = true;
       _validate();
     });
     if (_errors.isNotEmpty) return;
 
-    final ok = context.read<AuthCubit>().changePassword(
+    final ok = await context.read<AuthCubit>().changePassword(
       currentPassword: _current.text,
       newPassword: _next.text,
     );
-    if (!ok) return;
+    if (!mounted || !ok) return;
 
     showAppAlert(
       context,

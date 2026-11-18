@@ -87,17 +87,26 @@ class AuthRepository {
     return user;
   }
 
-  bool changePassword({
+  Future<bool> changePassword({
     required String currentPassword,
     required String newPassword,
-  }) {
-    if (_currentUser == null) return false;
-    if (currentPassword.isEmpty ||
-        newPassword.length < 8 ||
-        newPassword.length > 128) {
-      return false;
+  }) async {
+    final user = _currentUser;
+    if (user == null) {
+      throw AuthException('Pengguna belum masuk.');
     }
-    return true;
+    if (currentPassword.isEmpty) {
+      throw AuthException('Kata sandi saat ini tidak boleh kosong.');
+    }
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      throw AuthException('Kata sandi baru harus 8–128 karakter.');
+    }
+
+    return _service.changePassword(
+      email: user.email,
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
   }
 
   void logout() {

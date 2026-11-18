@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pbl_skin_problem_detector/business/cubit/auth_cubit.dart';
+import 'package:pbl_skin_problem_detector/data/repositories/auth_repository.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth.dart';
 import 'package:pbl_skin_problem_detector/data/services/user/user.dart';
 import 'package:pbl_skin_problem_detector/main.dart';
@@ -27,6 +29,7 @@ void main() {
   setUp(() {
     AuthService.mockRemoteAuth = true;
     UserService.mockRemoteUser = true;
+    AuthService.resetDemoPassword();
   });
   tearDown(() {
     AuthService.mockRemoteAuth = false;
@@ -183,4 +186,23 @@ void main() {
       );
     },
   );
+
+  test('AuthCubit.changePassword memvalidasi kata sandi saat ini yang salah', () async {
+    final service = AuthService();
+    final repository = AuthRepository(service);
+    await repository.login(
+      email: AuthService.demoEmail,
+      password: AuthService.demoPassword,
+      acceptedTerms: true,
+    );
+    final cubit = AuthCubit(repository);
+
+    final ok = await cubit.changePassword(
+      currentPassword: 'password_salah',
+      newPassword: 'password_baru123',
+    );
+
+    expect(ok, isFalse);
+    expect(cubit.state.errorMessage, 'Kata sandi saat ini salah.');
+  });
 }

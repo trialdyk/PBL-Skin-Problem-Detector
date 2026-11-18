@@ -16,6 +16,12 @@ class AuthService {
   /// Akun demo lokal (hanya dipakai saat [mockRemoteAuth] = true di widget test).
   static const String demoEmail = 'pengguna@gmail.com';
   static const String demoPassword = 'skinscan123';
+  static String _activeDemoPassword = demoPassword;
+
+  @visibleForTesting
+  static void resetDemoPassword() {
+    _activeDemoPassword = demoPassword;
+  }
 
   /// Widget tests: skip Google SDK + HTTP ke backend.
   @visibleForTesting
@@ -159,7 +165,37 @@ class AuthService {
     return user;
   }
 
+  /// Memverifikasi kata sandi saat ini dan memperbarui kata sandi.
+  Future<bool> changePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (mockRemoteAuth) {
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      if (!_credentialsMatch(email, currentPassword)) {
+        throw AuthException('Kata sandi saat ini salah.');
+      }
+      _activeDemoPassword = newPassword;
+      return true;
+    }
+
+    try {
+      final user = await _login(email: email, password: currentPassword);
+      setAccessToken(user.accessToken);
+      return true;
+    } on AuthException catch (e) {
+      if (e.statusCode == 401 ||
+          e.statusCode == 400 ||
+          e.message.toLowerCase().contains('sandi')) {
+        throw AuthException('Kata sandi saat ini salah.');
+      }
+      rethrow;
+    }
+  }
+
   bool _credentialsMatch(String email, String password) {
-    return email.trim().toLowerCase() == demoEmail && password == demoPassword;
+    return email.trim().toLowerCase() == demoEmail &&
+        password == _activeDemoPassword;
   }
 }

@@ -284,10 +284,12 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   /// Memperbarui kata sandi pengguna pada sesi aktif.
-  bool changePassword({
+  Future<bool> changePassword({
     required String currentPassword,
     required String newPassword,
-  }) {
+  }) async {
+    if (state.passwordSaving) return false;
+
     if (currentPassword.isEmpty) {
       emit(
         state.copyWith(
@@ -314,13 +316,35 @@ class AuthCubit extends Cubit<AuthState> {
       return false;
     }
 
-    final ok = _repository.changePassword(
-      currentPassword: currentPassword,
-      newPassword: newPassword,
-    );
-    if (!ok) return false;
-    emit(state.copyWith(clearError: true));
-    return true;
+    emit(state.copyWith(passwordSaving: true, clearError: true));
+    try {
+      final ok = await _repository.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      if (!ok) {
+        emit(
+          state.copyWith(
+            passwordSaving: false,
+            errorMessage: 'Kata sandi saat ini salah.',
+          ),
+        );
+        return false;
+      }
+      emit(state.copyWith(passwordSaving: false, clearError: true));
+      return true;
+    } on AuthException catch (e) {
+      emit(state.copyWith(passwordSaving: false, errorMessage: e.message));
+      return false;
+    } catch (_) {
+      emit(
+        state.copyWith(
+          passwordSaving: false,
+          errorMessage: 'Gagal memperbarui kata sandi. Coba lagi.',
+        ),
+      );
+      return false;
+    }
   }
 
   void logout() {
