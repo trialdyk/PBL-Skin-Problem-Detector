@@ -5,6 +5,7 @@ import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
 import 'package:pbl_skin_problem_detector/data/models/interview_answers.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
+import 'package:pbl_skin_problem_detector/presentation/widgets/age_spin_box.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/chat_bubbles.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -214,6 +215,7 @@ class _AnswerPanelState extends State<_AnswerPanel>
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<ScanCubit>();
+    final isAgeStep = widget.step == 1;
     final options = switch (widget.step) {
       0 => [
           _Option('Saya laki-laki', () => cubit.answerGender(GenderOption.male)),
@@ -225,13 +227,6 @@ class _AnswerPanelState extends State<_AnswerPanel>
             'Lebih memilih tidak menjawab',
             () => cubit.answerGender(GenderOption.preferNotToSay),
           ),
-        ],
-      1 => [
-          _Option('18 tahun', () => cubit.answerAge(18)),
-          _Option('20 tahun', () => cubit.answerAge(20)),
-          _Option('25 tahun', () => cubit.answerAge(25)),
-          _Option('30 tahun', () => cubit.answerAge(30)),
-          _Option('35+ tahun', () => cubit.answerAge(36)),
         ],
       2 => [
           _Option('Ya, rutin', () => cubit.answerSunscreen(true)),
@@ -260,7 +255,7 @@ class _AnswerPanelState extends State<_AnswerPanel>
       _ => <_Option>[],
     };
 
-    if (options.isEmpty) return const SizedBox.shrink();
+    if (!isAgeStep && options.isEmpty) return const SizedBox.shrink();
 
     return SlideTransition(
       position: Tween<Offset>(
@@ -291,7 +286,7 @@ class _AnswerPanelState extends State<_AnswerPanel>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Pilih jawabanmu',
+                  isAgeStep ? 'Tentukan umurmu' : 'Pilih jawabanmu',
                   style: appFont(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -299,19 +294,25 @@ class _AnswerPanelState extends State<_AnswerPanel>
                   ),
                 ),
                 const Gap(12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (var i = 0; i < options.length; i++)
-                      _AnswerChip(
-                        label: options[i].label,
-                        onTap: options[i].onTap,
-                        index: i,
-                        enter: _enter,
-                      ),
-                  ],
-                ),
+                if (isAgeStep)
+                  AgeSpinBox(
+                    initialValue: cubit.state.session.interview.age ?? 20,
+                    onConfirm: (age) => cubit.answerAge(age),
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (var i = 0; i < options.length; i++)
+                        _AnswerChip(
+                          label: options[i].label,
+                          onTap: options[i].onTap,
+                          index: i,
+                          enter: _enter,
+                        ),
+                    ],
+                  ),
               ],
             ),
           ),
