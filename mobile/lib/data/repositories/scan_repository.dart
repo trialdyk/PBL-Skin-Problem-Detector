@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:pbl_skin_problem_detector/data/models/gea_result.dart';
+import 'package:pbl_skin_problem_detector/data/models/history_item.dart';
 import 'package:pbl_skin_problem_detector/data/models/interview_answers.dart';
 import 'package:pbl_skin_problem_detector/data/models/result_source.dart';
 import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
@@ -30,6 +31,8 @@ class ScanRepository {
 
   ScanSession get session => _session;
 
+  bool get hasHistoryService => historyService != null;
+
   void setPhoto(SelfieAngle angle, String path) {
     _session = switch (angle) {
       SelfieAngle.front => _session.copyWith(frontPath: path),
@@ -39,7 +42,11 @@ class ScanRepository {
   }
 
   void clearPhotos() {
-    _session = _session.copyWith(clearPhotos: true, clearResult: true);
+    _session = _session.copyWith(
+      clearPhotos: true,
+      clearResult: true,
+      clearHistory: true,
+    );
   }
 
   void setInterview(InterviewAnswers answers) {
@@ -49,21 +56,20 @@ class ScanRepository {
   /// Diagnosa GEA: foto → `POST /ml/predict`, lalu simpan hasil ke sesi.
   Future<GeaResult> diagnose() async {
     final result = await _diagnoseWithFallback();
-    _session = _session.copyWith(result: result);
+    _session = _session.copyWith(result: result, clearHistory: true);
     return result;
   }
 
-  /// Simpan sesi selesai ke server (foto + grade + interview).
-  ///
-  /// Tidak melempar ke UI flow — caller boleh tangkap error untuk toast.
-  Future<void> persistHistory() async {
+  /// Simpan sesi selesai ke server (foto + grade + interview) lalu simpan
+  /// `historyId` dan slot `recommendation` awal ke sesi.
+  Future<HistoryItem?> persistHistory() async {
     final history = historyService;
     final result = _session.result;
     final front = _session.frontPath;
     final left = _session.leftPath;
     final right = _session.rightPath;
-    if (history == null || result == null) return;
-    if (front == null || left == null || right == null) return;
+    if (history == null || result == null) return null;
+    if (front == null || left == null || right == null) return null;
 
     final source = result.source == ResultSource.ml ? 'ml' : 'rule_based';
     final modelId = result.source == ResultSource.ml
@@ -79,7 +85,7 @@ class ScanRepository {
       };
     }
 
-    await history.create(
+    final created = await history.create(
       frontPath: front,
       leftPath: left,
       rightPath: right,
@@ -91,6 +97,35 @@ class ScanRepository {
       topLabel: _lastTopLabel,
       aggregate: aggregate,
     );
+    _session = _session.copyWith(
+      historyId: created.id,
+      recommendation: created.recommendation,
+    );
+    return created;
+  }
+
+  /// Ambil status/teks rekomendasi terbaru dari `GET /history/{id}`.
+  Future<HistoryRecommendation?> refreshRecommendation(String historyId) async {
+    final history = historyService;
+    if (history == null) return null;
+    final detail = await history.detail(historyId);
+    _session = _session.copyWith(
+      historyId: detail.id,
+      recommendation: detail.recommendation,
+    );
+    return detail.recommendation;
+  }
+
+  /// Minta ulang generasi rekomendasi LLM lewat `POST /history/{id}/recommendation/retry`.
+  Future<HistoryRecommendation?> retryRecommendation(String historyId) async {
+    final history = historyService;
+    if (history == null) return null;
+    final updated = await history.retryRecommendation(historyId);
+    _session = _session.copyWith(
+      historyId: updated.id,
+      recommendation: updated.recommendation,
+    );
+    return updated.recommendation;
   }
 
   /// CNN dulu; kalau gagal (offline, 4xx/5xx, model mati) pakai rule-based

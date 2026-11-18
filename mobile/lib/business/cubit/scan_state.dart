@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:pbl_skin_problem_detector/data/models/gea_result.dart';
+import 'package:pbl_skin_problem_detector/data/models/history_item.dart';
 import 'package:pbl_skin_problem_detector/data/models/result_source.dart';
 import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
 
@@ -38,6 +39,8 @@ class ScanState extends Equatable {
     this.interviewStep = 0,
     this.messages = const [],
     this.isTyping = false,
+    this.isLoadingRecommendation = false,
+    this.historySaveFailed = false,
     this.errorMessage,
   });
 
@@ -47,9 +50,13 @@ class ScanState extends Equatable {
   final int interviewStep;
   final List<ChatMessage> messages;
   final bool isTyping;
+  final bool isLoadingRecommendation;
+  final bool historySaveFailed;
   final String? errorMessage;
 
   GeaResult? get result => session.result;
+  String? get historyId => session.historyId;
+  HistoryRecommendation? get recommendation => session.recommendation;
   bool get hasAllPhotos => session.hasAllPhotos;
 
   /// Asal hasil terakhir: [ResultSource.ml] kalau CNN berhasil, [ResultSource.ruleBased]
@@ -63,6 +70,8 @@ class ScanState extends Equatable {
     int? interviewStep,
     List<ChatMessage>? messages,
     bool? isTyping,
+    bool? isLoadingRecommendation,
+    bool? historySaveFailed,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -73,6 +82,9 @@ class ScanState extends Equatable {
       interviewStep: interviewStep ?? this.interviewStep,
       messages: messages ?? this.messages,
       isTyping: isTyping ?? this.isTyping,
+      isLoadingRecommendation:
+          isLoadingRecommendation ?? this.isLoadingRecommendation,
+      historySaveFailed: historySaveFailed ?? this.historySaveFailed,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -85,6 +97,8 @@ class ScanState extends Equatable {
         interviewStep,
         messages,
         isTyping,
+        isLoadingRecommendation,
+        historySaveFailed,
         errorMessage,
       ];
 }

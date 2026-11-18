@@ -1,16 +1,26 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
+import 'package:pbl_skin_problem_detector/data/models/history_item.dart';
 import 'package:pbl_skin_problem_detector/data/models/interview_answers.dart';
 import 'package:pbl_skin_problem_detector/data/models/result_source.dart';
 import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
 import 'package:pbl_skin_problem_detector/data/repositories/scan_repository.dart';
 
 class ScanCubit extends Cubit<ScanState> {
-  ScanCubit(this._repository) : super(const ScanState());
+  ScanCubit(
+    this._repository, {
+    this.pollInterval = const Duration(seconds: 2),
+    this.maxPollAttempts = 20,
+  }) : super(const ScanState());
 
   final ScanRepository _repository;
+  final Duration pollInterval;
+  final int maxPollAttempts;
   int _msgCounter = 0;
+  int _pollToken = 0;
 
   /// Tanda yaw saat foto sisi kiri diambil; dipakai untuk memvalidasi sisi
   /// kanan (harus berlawanan) walau foto diambil di layar kamera terpisah.
@@ -236,7 +246,13 @@ class ScanCubit extends Cubit<ScanState> {
   }
 
   Future<void> _runDiagnosis() async {
-    emit(state.copyWith(phase: ScanPhase.diagnosing, clearError: true));
+    final token = ++_pollToken;
+    emit(state.copyWith(
+      phase: ScanPhase.diagnosing,
+      isLoadingRecommendation: _repository.hasHistoryService,
+      historySaveFailed: false,
+      clearError: true,
+    ));
     try {
       final result = await _repository.diagnose();
       emit(state.copyWith(
@@ -254,24 +270,138 @@ class ScanCubit extends Cubit<ScanState> {
         );
       }
 
+      if (!_repository.hasHistoryService ||
+          !_repository.session.hasAllPhotos) {
+        if (!isClosed && token == _pollToken) {
+          emit(state.copyWith(isLoadingRecommendation: false));
+        }
+        return;
+      }
+
       // One-shot persist ke server (tidak memblokir layar hasil).
       try {
-        await _repository.persistHistory();
+        final saved = await _repository.persistHistory();
+        if (isClosed || token != _pollToken) return;
+
+        emit(state.copyWith(
+          session: _repository.session,
+          historySaveFailed: saved == null,
+          isLoadingRecommendation:
+              saved != null &&
+              saved.recommendation.status == RecommendationStatus.pending,
+        ));
+
+        if (saved != null &&
+            saved.recommendation.status == RecommendationStatus.pending) {
+          unawaited(_pollRecommendation(saved.id, token));
+        }
       } catch (error) {
         debugPrint('Gagal menyimpan riwayat: $error');
+        if (!isClosed && token == _pollToken) {
+          emit(state.copyWith(
+            isLoadingRecommendation: false,
+            historySaveFailed: true,
+          ));
+        }
       }
     } catch (_) {
       emit(state.copyWith(
         phase: ScanPhase.interviewing,
+        isLoadingRecommendation: false,
         errorMessage: 'Gagal membuat diagnosa. Coba lagi.',
       ));
     }
   }
 
+  /// Polling singkat ke `GET /history/{id}` sampai rekomendasi LLM siap/gagal.
+  Future<void> _pollRecommendation(String historyId, int token) async {
+    for (var attempt = 0; attempt < maxPollAttempts; attempt++) {
+      await Future<void>.delayed(pollInterval);
+      if (isClosed || token != _pollToken) return;
+
+      try {
+        final rec = await _repository.refreshRecommendation(historyId);
+        if (isClosed || token != _pollToken) return;
+
+        if (rec == null || rec.status != RecommendationStatus.pending) {
+          emit(state.copyWith(
+            session: _repository.session,
+            isLoadingRecommendation: false,
+          ));
+          return;
+        }
+        emit(state.copyWith(session: _repository.session));
+      } catch (error) {
+        debugPrint('Polling rekomendasi gagal (percobaan ${attempt + 1}): $error');
+      }
+    }
+
+    if (!isClosed && token == _pollToken) {
+      emit(state.copyWith(isLoadingRecommendation: false));
+    }
+  }
+
+  /// Cek ulang status rekomendasi untuk sesi saat ini.
+  Future<void> refreshRecommendation() async {
+    final historyId = state.historyId;
+    if (historyId == null) return;
+    final token = ++_pollToken;
+    emit(state.copyWith(isLoadingRecommendation: true));
+    try {
+      final rec = await _repository.refreshRecommendation(historyId);
+      if (isClosed || token != _pollToken) return;
+      emit(state.copyWith(
+        session: _repository.session,
+        isLoadingRecommendation:
+            rec?.status == RecommendationStatus.pending,
+      ));
+      if (rec?.status == RecommendationStatus.pending) {
+        unawaited(_pollRecommendation(historyId, token));
+      }
+    } catch (_) {
+      if (!isClosed && token == _pollToken) {
+        emit(state.copyWith(isLoadingRecommendation: false));
+      }
+    }
+  }
+
+  /// Minta ulang generasi rekomendasi LLM jika sebelumnya gagal/terhenti.
+  Future<String?> retryRecommendation() async {
+    final historyId = state.historyId;
+    if (historyId == null) return 'Riwayat belum tersimpan.';
+    final token = ++_pollToken;
+    emit(state.copyWith(isLoadingRecommendation: true));
+    try {
+      final rec = await _repository.retryRecommendation(historyId);
+      if (isClosed || token != _pollToken) return null;
+      final stillPending = rec?.status == RecommendationStatus.pending;
+      emit(state.copyWith(
+        session: _repository.session,
+        isLoadingRecommendation: stillPending,
+      ));
+      if (stillPending) {
+        unawaited(_pollRecommendation(historyId, token));
+      }
+      return null;
+    } catch (error) {
+      if (!isClosed && token == _pollToken) {
+        emit(state.copyWith(isLoadingRecommendation: false));
+      }
+      return error.toString();
+    }
+  }
+
   void resetFlow() {
+    _pollToken++;
     _repository.reset();
     leftYawSign = null;
     _msgCounter = 0;
     emit(const ScanState());
+  }
+
+  @override
+  Future<void> close() {
+    _pollToken++;
+    return super.close();
   }
 }

@@ -4,6 +4,7 @@ import 'package:pbl_skin_problem_detector/data/services/history/history_create.d
 import 'package:pbl_skin_problem_detector/data/services/history/history_delete.dart';
 import 'package:pbl_skin_problem_detector/data/services/history/history_detail.dart';
 import 'package:pbl_skin_problem_detector/data/services/history/history_list.dart';
+import 'package:pbl_skin_problem_detector/data/services/history/history_retry_recommendation.dart';
 
 /// Facade endpoint `/history`.
 class HistoryService {
@@ -11,13 +12,15 @@ class HistoryService {
       : _create = HistoryCreate(api),
         _list = HistoryList(api),
         _detail = HistoryDetail(api),
-        _delete = HistoryDelete(api);
+        _delete = HistoryDelete(api),
+        _retryRecommendation = HistoryRetryRecommendation(api);
 
   final ApiClient api;
   final HistoryCreate _create;
   final HistoryList _list;
   final HistoryDetail _detail;
   final HistoryDelete _delete;
+  final HistoryRetryRecommendation _retryRecommendation;
 
   Future<HistoryItem> create({
     required String frontPath,
@@ -50,6 +53,9 @@ class HistoryService {
   }
 
   Future<HistoryItem> detail(String id) => _detail(id);
+
+  Future<HistoryItem> retryRecommendation(String id) =>
+      _retryRecommendation(id);
 
   Future<void> delete(String id) => _delete(id);
 }

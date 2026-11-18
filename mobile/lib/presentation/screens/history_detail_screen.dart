@@ -9,6 +9,7 @@ import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/auth_network_image.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/gea_scale_bar.dart';
+import 'package:pbl_skin_problem_detector/presentation/widgets/recommendation_card.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class HistoryDetailScreen extends StatelessWidget {
@@ -120,8 +121,28 @@ class _HistoryDetailView extends StatelessWidget {
                           const Gap(18),
                           _PhotoStrip(item: item),
                           const Gap(18),
-                          _RecommendationBlock(
+                          RecommendationCard(
                             recommendation: item.recommendation,
+                            isLoading: state.retryingRecommendation,
+                            onRefresh: !state.retryingRecommendation &&
+                                    item.recommendation.status ==
+                                        RecommendationStatus.pending
+                                ? () => context
+                                    .read<HistoryCubit>()
+                                    .loadDetail(historyId)
+                                : null,
+                            onRetry: !state.retryingRecommendation &&
+                                    item.recommendation.status ==
+                                        RecommendationStatus.failed
+                                ? () async {
+                                    final err = await context
+                                        .read<HistoryCubit>()
+                                        .retryRecommendation();
+                                    if (err != null && context.mounted) {
+                                      showHint(context, err);
+                                    }
+                                  }
+                                : null,
                           ),
                           const Gap(14),
                           _InterviewBlock(interview: item.interview),
@@ -318,89 +339,6 @@ class _PhotoStrip extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _RecommendationBlock extends StatelessWidget {
-  const _RecommendationBlock({required this.recommendation});
-
-  final HistoryRecommendation recommendation;
-
-  @override
-  Widget build(BuildContext context) {
-    final pending = recommendation.status == RecommendationStatus.pending;
-    final failed = recommendation.status == RecommendationStatus.failed;
-    final text = recommendation.text?.trim();
-
-    return SoftSurface(
-      color: pending ? AppColors.brandSoft : AppColors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                LucideIcons.sparkles,
-                size: 16,
-                color: AppColors.brand,
-              ),
-              const Gap(8),
-              Text(
-                'Rekomendasi perawatan',
-                style: appFont(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          const Gap(12),
-          if (pending) ...[
-            Container(
-              height: 12,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.white.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            const Gap(8),
-            Container(
-              height: 12,
-              width: MediaQuery.sizeOf(context).width * 0.55,
-              decoration: BoxDecoration(
-                color: AppColors.white.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            const Gap(12),
-            Text(
-              'Rekomendasi personal segera tersedia setelah layanan AI aktif.',
-              style: appFont(
-                fontSize: 13,
-                color: AppColors.inkMuted,
-                height: 1.45,
-              ),
-            ),
-          ] else if (failed || text == null || text.isEmpty) ...[
-            Text(
-              'Rekomendasi belum tersedia untuk sesi ini.',
-              style: appFont(
-                fontSize: 13.5,
-                color: AppColors.inkMuted,
-                height: 1.45,
-              ),
-            ),
-          ] else ...[
-            Text(
-              text,
-              style: appFont(
-                fontSize: 14,
-                color: AppColors.ink,
-                height: 1.55,
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

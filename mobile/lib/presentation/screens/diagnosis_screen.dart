@@ -4,12 +4,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_cubit.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
+import 'package:pbl_skin_problem_detector/data/models/history_item.dart';
 import 'package:pbl_skin_problem_detector/data/models/result_source.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/gea_result_badge.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/gea_scale_bar.dart';
+import 'package:pbl_skin_problem_detector/presentation/widgets/recommendation_card.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Catatan hasil: teks berbeda untuk hasil CNN dan hasil rule-based.
@@ -172,6 +174,39 @@ class DiagnosisScreen extends StatelessWidget {
                               ),
                             ),
                             const Gap(12),
+                            if (state.historySaveFailed ||
+                                state.isLoadingRecommendation ||
+                                state.recommendation != null) ...[
+                              RecommendationCard(
+                                recommendation: state.recommendation,
+                                isLoading: state.isLoadingRecommendation,
+                                unavailableMessage: state.historySaveFailed
+                                    ? 'Rekomendasi AI belum dapat dimuat karena sesi gagal disimpan ke server.'
+                                    : null,
+                                onRefresh: !state.isLoadingRecommendation &&
+                                        state.historyId != null &&
+                                        state.recommendation?.status ==
+                                            RecommendationStatus.pending
+                                    ? () => context
+                                        .read<ScanCubit>()
+                                        .refreshRecommendation()
+                                    : null,
+                                onRetry: !state.isLoadingRecommendation &&
+                                        state.historyId != null &&
+                                        state.recommendation?.status ==
+                                            RecommendationStatus.failed
+                                    ? () async {
+                                        final err = await context
+                                            .read<ScanCubit>()
+                                            .retryRecommendation();
+                                        if (err != null && context.mounted) {
+                                          showHint(context, err);
+                                        }
+                                      }
+                                    : null,
+                              ),
+                              const Gap(12),
+                            ],
                             SoftSurface(
                               color: AppColors.brandSoft,
                               child: Row(

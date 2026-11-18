@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:pbl_skin_problem_detector/data/models/gea_result.dart';
+import 'package:pbl_skin_problem_detector/data/models/history_item.dart';
 import 'package:pbl_skin_problem_detector/data/models/interview_answers.dart';
 
 enum SelfieAngle { front, left, right }
@@ -11,6 +12,8 @@ class ScanSession extends Equatable {
     this.rightPath,
     this.interview = const InterviewAnswers(),
     this.result,
+    this.historyId,
+    this.recommendation,
   });
 
   final String? frontPath;
@@ -18,6 +21,8 @@ class ScanSession extends Equatable {
   final String? rightPath;
   final InterviewAnswers interview;
   final GeaResult? result;
+  final String? historyId;
+  final HistoryRecommendation? recommendation;
 
   bool get hasAllPhotos =>
       frontPath != null && leftPath != null && rightPath != null;
@@ -42,8 +47,11 @@ class ScanSession extends Equatable {
     String? rightPath,
     InterviewAnswers? interview,
     GeaResult? result,
+    String? historyId,
+    HistoryRecommendation? recommendation,
     bool clearPhotos = false,
     bool clearResult = false,
+    bool clearHistory = false,
   }) {
     return ScanSession(
       frontPath: clearPhotos ? null : (frontPath ?? this.frontPath),
@@ -51,10 +59,20 @@ class ScanSession extends Equatable {
       rightPath: clearPhotos ? null : (rightPath ?? this.rightPath),
       interview: interview ?? this.interview,
       result: clearResult ? null : (result ?? this.result),
+      historyId: clearHistory ? null : (historyId ?? this.historyId),
+      recommendation:
+          clearHistory ? null : (recommendation ?? this.recommendation),
     );
   }
 
   @override
-  List<Object?> get props =>
-      [frontPath, leftPath, rightPath, interview, result];
+  List<Object?> get props => [
+        frontPath,
+        leftPath,
+        rightPath,
+        interview,
+        result,
+        historyId,
+        recommendation,
+      ];
 }
