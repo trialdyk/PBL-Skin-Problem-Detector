@@ -163,12 +163,13 @@ class ScanCubit extends Cubit<ScanState> {
     );
   }
 
-  Future<void> answerUnhealthyFood(bool value) async {
+  Future<void> answerUnhealthyFood(bool value, {String? customLabel}) async {
+    final defaultLabel = value
+        ? 'Sering konsumsi makanan pemicu (gorengan, manis, dll)'
+        : 'Jarang konsumsi makanan pemicu';
     await _answer(
       key: 'food',
-      label: value
-          ? 'Sering konsumsi makanan pemicu (gorengan, manis, dll)'
-          : 'Jarang konsumsi makanan pemicu',
+      label: customLabel ?? defaultLabel,
       update: (a) => a.copyWith(unhealthyFoodOften: value),
     );
   }

@@ -6,6 +6,7 @@ import 'package:pbl_skin_problem_detector/data/models/interview_answers.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/age_spin_box.dart';
+import 'package:pbl_skin_problem_detector/presentation/widgets/frequency_slider.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/chat_bubbles.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -216,6 +217,7 @@ class _AnswerPanelState extends State<_AnswerPanel>
   Widget build(BuildContext context) {
     final cubit = context.read<ScanCubit>();
     final isAgeStep = widget.step == 1;
+    final isFoodStep = widget.step == 4;
     final options = switch (widget.step) {
       0 => [
           _Option('Saya laki-laki', () => cubit.answerGender(GenderOption.male)),
@@ -248,14 +250,16 @@ class _AnswerPanelState extends State<_AnswerPanel>
           ),
           _Option('Normal', () => cubit.answerSkinType(SkinTypeOption.normal)),
         ],
-      4 => [
-          _Option('Sering', () => cubit.answerUnhealthyFood(true)),
-          _Option('Jarang', () => cubit.answerUnhealthyFood(false)),
-        ],
       _ => <_Option>[],
     };
 
-    if (!isAgeStep && options.isEmpty) return const SizedBox.shrink();
+    if (!isAgeStep && !isFoodStep && options.isEmpty) return const SizedBox.shrink();
+
+    final headerText = switch (widget.step) {
+      1 => 'Tentukan umurmu',
+      4 => 'Seberapa sering konsumsinya?',
+      _ => 'Pilih jawabanmu',
+    };
 
     return SlideTransition(
       position: Tween<Offset>(
@@ -286,7 +290,7 @@ class _AnswerPanelState extends State<_AnswerPanel>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  isAgeStep ? 'Tentukan umurmu' : 'Pilih jawabanmu',
+                  headerText,
                   style: appFont(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -298,6 +302,18 @@ class _AnswerPanelState extends State<_AnswerPanel>
                   AgeSpinBox(
                     initialValue: cubit.state.session.interview.age ?? 20,
                     onConfirm: (age) => cubit.answerAge(age),
+                  )
+                else if (isFoodStep)
+                  FrequencySlider(
+                    initialIndex: cubit.state.session.interview.unhealthyFoodOften == true
+                        ? 3
+                        : (cubit.state.session.interview.unhealthyFoodOften == false ? 1 : 2),
+                    onConfirm: (option) {
+                      cubit.answerUnhealthyFood(
+                        option.isOften,
+                        customLabel: '${option.label} konsumsi makanan pemicu',
+                      );
+                    },
                   )
                 else
                   Wrap(
