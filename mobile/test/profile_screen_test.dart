@@ -205,4 +205,35 @@ void main() {
     expect(ok, isFalse);
     expect(cubit.state.errorMessage, 'Kata sandi saat ini salah.');
   });
+
+  testWidgets(
+    'ChangePasswordScreen menampilkan galat saat kata sandi saat ini salah',
+    (tester) async {
+      await _loginToProfile(tester);
+
+      await tester.tap(find.text('Ubah kata sandi'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const ValueKey('change-password-current')),
+        'katasandi_salah',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('change-password-new')),
+        'passwordBaru123',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('change-password-confirm')),
+        'passwordBaru123',
+      );
+
+      await tester.ensureVisible(find.text('Simpan Kata Sandi'));
+      await tester.tap(find.text('Simpan Kata Sandi'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kata sandi saat ini salah.'), findsOneWidget);
+    },
+  );
 }

@@ -2,6 +2,7 @@ import 'package:flutter/services.dart' show TextInputAction;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/auth_cubit.dart';
+import 'package:pbl_skin_problem_detector/business/cubit/auth_state.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_font.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/app_widgets.dart';
@@ -70,11 +71,22 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     });
     if (_errors.isNotEmpty) return;
 
-    final ok = await context.read<AuthCubit>().changePassword(
+    final cubit = context.read<AuthCubit>();
+    final ok = await cubit.changePassword(
       currentPassword: _current.text,
       newPassword: _next.text,
     );
-    if (!mounted || !ok) return;
+    if (!mounted) return;
+
+    if (!ok) {
+      final msg = cubit.state.errorMessage;
+      if (msg != null && msg.toLowerCase().contains('saat ini')) {
+        setState(() {
+          _errors['current'] = msg;
+        });
+      }
+      return;
+    }
 
     showAppAlert(
       context,
@@ -130,47 +142,71 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppColors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _passwordField(
-                                  id: 'current',
-                                  label: 'Kata Sandi Saat Ini',
-                                  placeholder: 'Masukkan kata sandi saat ini',
-                                  controller: _current,
+                          BlocConsumer<AuthCubit, AuthState>(
+                            listenWhen: (prev, next) =>
+                                prev.errorMessage != next.errorMessage &&
+                                next.errorMessage != null,
+                            listener: (context, state) {
+                              final msg = state.errorMessage;
+                              if (msg != null &&
+                                  msg.toLowerCase().contains('saat ini')) {
+                                setState(() {
+                                  _errors['current'] = msg;
+                                });
+                              }
+                            },
+                            builder: (context, state) {
+                              final saving = state.passwordSaving;
+
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppColors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppColors.border),
                                 ),
-                                const Gap(16),
-                                _passwordField(
-                                  id: 'new',
-                                  label: 'Kata Sandi Baru',
-                                  placeholder: 'Minimal 8 karakter',
-                                  controller: _next,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    _passwordField(
+                                      id: 'current',
+                                      label: 'Kata Sandi Saat Ini',
+                                      placeholder:
+                                          'Masukkan kata sandi saat ini',
+                                      controller: _current,
+                                      enabled: !saving,
+                                    ),
+                                    const Gap(16),
+                                    _passwordField(
+                                      id: 'new',
+                                      label: 'Kata Sandi Baru',
+                                      placeholder: 'Minimal 8 karakter',
+                                      controller: _next,
+                                      enabled: !saving,
+                                    ),
+                                    const Gap(16),
+                                    _passwordField(
+                                      id: 'confirm',
+                                      label: 'Konfirmasi Kata Sandi Baru',
+                                      placeholder: 'Ulangi kata sandi baru',
+                                      controller: _confirm,
+                                      enabled: !saving,
+                                      last: true,
+                                    ),
+                                    const Gap(20),
+                                    AppButton(
+                                      label: 'Simpan Kata Sandi',
+                                      height: 46,
+                                      fontSize: 14,
+                                      loading: saving,
+                                      trailingIcon: LucideIcons.check,
+                                      onTap: saving ? null : _submit,
+                                    ),
+                                  ],
                                 ),
-                                const Gap(16),
-                                _passwordField(
-                                  id: 'confirm',
-                                  label: 'Konfirmasi Kata Sandi Baru',
-                                  placeholder: 'Ulangi kata sandi baru',
-                                  controller: _confirm,
-                                  last: true,
-                                ),
-                                const Gap(20),
-                                AppButton(
-                                  label: 'Simpan Kata Sandi',
-                                  height: 46,
-                                  fontSize: 14,
-                                  trailingIcon: LucideIcons.check,
-                                  onTap: _submit,
-                                ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
                           const Gap(12),
                           Text(
@@ -200,6 +236,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     required String placeholder,
     required TextEditingController controller,
     bool last = false,
+    bool enabled = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -215,6 +252,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           controller: controller,
           placeholder: Text(placeholder),
           obscureText: true,
+          enabled: enabled,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           borderRadius: BorderRadius.circular(14),
           features: const [InputFeature.passwordToggle()],
