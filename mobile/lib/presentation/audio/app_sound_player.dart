@@ -1,5 +1,6 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
 
 /// Bunyi pendek layar kamera: tick countdown 3-2-1 dan rana saat foto diambil.
 ///
@@ -15,6 +16,9 @@ abstract interface class AppSoundPlayer {
   /// Bunyi rana kamera saat foto diambil.
   Future<void> playShutter();
 
+  /// Suara panduan sudut dari file MP3 ElevenLabs.
+  Future<void> playVoice(SelfieAngle angle);
+
   Future<void> dispose();
 }
 
@@ -29,9 +33,15 @@ class AssetSoundPlayer implements AppSoundPlayer {
   /// Tanpa prefix `assets/`: `AudioCache.prefix` bawaan sudah `assets/`.
   static const tickAsset = 'audio/countdown_tick.mp3';
   static const shutterAsset = 'audio/shutter.mp3';
+  static const _voiceAssets = {
+    SelfieAngle.front: 'audio/PLKD.mp3',
+    SelfieAngle.left: 'audio/HKiri.mp3',
+    SelfieAngle.right: 'audio/HKanan.mp3',
+  };
 
   final AudioPlayer _tick = AudioPlayer(playerId: 'countdown_tick');
   final AudioPlayer _shutter = AudioPlayer(playerId: 'shutter');
+  final AudioPlayer _voice = AudioPlayer(playerId: 'voice_guide');
 
   bool _ready = false;
   bool _disposed = false;
@@ -68,6 +78,7 @@ class AssetSoundPlayer implements AppSoundPlayer {
     try {
       await _load(_tick, tickAsset);
       await _load(_shutter, shutterAsset);
+      await _loadVoice(_voice);
       // Hanya dianggap siap kalau kedua aset benar-benar termuat. Kalau gagal,
       // `_replay` tidak dipanggil sama sekali: di Android, `resume()` pada
       // player yang belum pernah punya source adalah no-op tanpa error.
@@ -85,12 +96,28 @@ class AssetSoundPlayer implements AppSoundPlayer {
   Future<void> playShutter() => _replay(_shutter, 'playShutter');
 
   @override
+  Future<void> playVoice(SelfieAngle angle) async {
+    if (_disposed) return;
+    final asset = _voiceAssets[angle];
+    if (asset == null) return;
+    try {
+      await _voice.stop();
+      await _voice.setAudioContext(audioContext);
+      await _voice.setReleaseMode(ReleaseMode.stop);
+      await _voice.play(AssetSource(asset));
+    } on Object catch (error) {
+      _warn('playVoice', error);
+    }
+  }
+
+  @override
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
     try {
       await _tick.dispose();
       await _shutter.dispose();
+      await _voice.dispose();
     } on Object catch (error) {
       _warn('dispose', error);
     }
@@ -102,6 +129,14 @@ class AssetSoundPlayer implements AppSoundPlayer {
     await player.setPlayerMode(PlayerMode.lowLatency);
     await player.setReleaseMode(ReleaseMode.stop);
     await player.setSource(AssetSource(asset));
+  }
+
+  Future<void> _loadVoice(AudioPlayer player) async {
+    // Voice guide pakai mode normal (bukan lowLatency) agar kualitas audio
+    // MP3 ElevenLabs tetap jernih saat diputar.
+    await player.setAudioContext(audioContext);
+    await player.setPlayerMode(PlayerMode.mediaPlayer);
+    await player.setReleaseMode(ReleaseMode.stop);
   }
 
   /// `stop()` mereset posisi ke awal, jadi `resume()` selalu memutar dari 0 —

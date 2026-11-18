@@ -10,7 +10,6 @@ import 'package:pbl_skin_problem_detector/data/services/face_scan_analyzer.dart'
 import 'package:pbl_skin_problem_detector/presentation/audio/app_sound_player.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_colors.dart';
 import 'package:pbl_skin_problem_detector/presentation/widgets/selfie_angle_progress.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class ScanCaptureScreen extends StatefulWidget {
@@ -30,11 +29,9 @@ class ScanCaptureScreen extends StatefulWidget {
 class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
   CameraController? _controller;
   final _analyzer = FaceScanAnalyzer();
-  final _tts = FlutterTts();
   late final AppSoundPlayer _soundPlayer;
 
   String? _error;
-  String? _voiceError;
   bool _initializing = true;
   bool _capturing = false;
   bool _streaming = false;
@@ -44,7 +41,6 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
   bool _angleOk = false;
 
   int? _countdown;
-  int _announcementId = 0;
   Timer? _countdownTimer;
   DateTime _lastAnalyze = DateTime.fromMillisecondsSinceEpoch(0);
   SelfieAngle _targetAngle = SelfieAngle.front;
@@ -71,27 +67,7 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
   }
 
   Future<void> _announceAngle(SelfieAngle angle) async {
-    final instruction = _instruction(angle);
-    final announcementId = ++_announcementId;
-    try {
-      await _tts.stop();
-      if (!mounted || announcementId != _announcementId) return;
-      await _tts.setLanguage('id-ID');
-      await _tts.setSpeechRate(0.48);
-      await _tts.setVolume(1);
-      await _tts.speak(instruction);
-      if (!mounted || announcementId != _announcementId) return;
-      if (_voiceError != null) {
-        setState(() => _voiceError = null);
-      }
-    } on Object {
-      if (!mounted) return;
-      if (announcementId != _announcementId) return;
-      setState(
-        () => _voiceError =
-            'Suara panduan tidak tersedia. Ikuti tulisan di layar.',
-      );
-    }
+    unawaited(_soundPlayer.playVoice(angle));
   }
 
   Future<void> _initCamera() async {
@@ -269,12 +245,6 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
     SelfieAngle.right => 'LIHAT KANAN',
   };
 
-  String _instruction(SelfieAngle angle) => switch (angle) {
-    SelfieAngle.front => 'Pandangan lurus ke depan',
-    SelfieAngle.left => 'Hadap kiri',
-    SelfieAngle.right => 'Hadap kanan',
-  };
-
   String _hint(SelfieAngle angle) => switch (angle) {
     SelfieAngle.front => 'Pandangan lurus ke depan',
     SelfieAngle.left => 'Hadap kiri sampai indikator sudut aktif',
@@ -294,7 +264,6 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
       }
     }
     _analyzer.dispose();
-    unawaited(_tts.stop());
     unawaited(_soundPlayer.dispose());
     super.dispose();
   }
@@ -384,17 +353,6 @@ class _ScanCaptureScreenState extends State<ScanCaptureScreen> {
                       fontSize: 12,
                     ),
                   ),
-                  if (_voiceError != null) ...[
-                    const Gap(4),
-                    Text(
-                      _voiceError!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.cameraMuted,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
                   const Gap(12),
                   Expanded(
                     child: Center(
