@@ -7,6 +7,7 @@ import 'package:pbl_skin_problem_detector/data/repositories/auth_repository.dart
 import 'package:pbl_skin_problem_detector/data/repositories/scan_repository.dart';
 import 'package:pbl_skin_problem_detector/data/services/auth/auth.dart';
 import 'package:pbl_skin_problem_detector/data/services/gea_diagnosis_service.dart';
+import 'package:pbl_skin_problem_detector/data/services/history/history.dart';
 import 'package:pbl_skin_problem_detector/data/services/ml/ml.dart';
 import 'package:pbl_skin_problem_detector/presentation/theme/app_theme.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -26,6 +27,7 @@ class SkinProblemDetectorApp extends StatefulWidget {
 class _SkinProblemDetectorAppState extends State<SkinProblemDetectorApp> {
   late final AuthRepository _authRepository;
   late final ScanRepository _scanRepository;
+  late final HistoryService _historyService;
   late final AuthCubit _authCubit;
   late final ScanCubit _scanCubit;
   late final GoRouter _router;
@@ -34,10 +36,12 @@ class _SkinProblemDetectorAppState extends State<SkinProblemDetectorApp> {
   void initState() {
     super.initState();
     _authRepository = AuthRepository(AuthService());
-    // Satu ApiClient dipakai bersama: JWT dari login otomatis ikut ke /ml/predict.
+    _historyService = HistoryService(_authRepository.api);
+    // Satu ApiClient dipakai bersama: JWT dari login otomatis ikut ke /ml + /history.
     _scanRepository = ScanRepository(
       GeaDiagnosisService(),
       mlPredict: MlPredict(_authRepository.api),
+      historyService: _historyService,
     );
     _authCubit = AuthCubit(_authRepository);
     _scanCubit = ScanCubit(_scanRepository);
@@ -54,17 +58,20 @@ class _SkinProblemDetectorAppState extends State<SkinProblemDetectorApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider.value(value: _authCubit),
-        BlocProvider.value(value: _scanCubit),
-      ],
-      child: ShadcnApp.router(
-        title: 'Skin Problem Detector',
-        theme: AppTheme.light,
-        themeMode: ThemeMode.light,
-        routerConfig: _router,
-        debugShowCheckedModeBanner: false,
+    return RepositoryProvider.value(
+      value: _historyService,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: _authCubit),
+          BlocProvider.value(value: _scanCubit),
+        ],
+        child: ShadcnApp.router(
+          title: 'Skin Problem Detector',
+          theme: AppTheme.light,
+          themeMode: ThemeMode.light,
+          routerConfig: _router,
+          debugShowCheckedModeBanner: false,
+        ),
       ),
     );
   }

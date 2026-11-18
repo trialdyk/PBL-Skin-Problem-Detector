@@ -12,6 +12,8 @@ import 'package:pbl_skin_problem_detector/presentation/screens/article_detail_sc
 import 'package:pbl_skin_problem_detector/presentation/screens/change_password_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/diagnosis_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/edit_profile_screen.dart';
+import 'package:pbl_skin_problem_detector/presentation/screens/history_detail_screen.dart';
+import 'package:pbl_skin_problem_detector/presentation/screens/history_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/home_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/interview_screen.dart';
 import 'package:pbl_skin_problem_detector/presentation/screens/login_screen.dart';
@@ -136,6 +138,16 @@ GoRouter createRouter(AuthCubit authCubit) {
       GoRoute(
         path: '/scan/result',
         builder: (context, state) => const DiagnosisScreen(),
+      ),
+      GoRoute(
+        path: '/history',
+        builder: (context, state) => const HistoryScreen(),
+      ),
+      GoRoute(
+        path: '/history/:id',
+        builder: (context, state) => HistoryDetailScreen(
+          historyId: state.pathParameters['id'] ?? '',
+        ),
       ),
     ],
   );

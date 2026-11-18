@@ -1,5 +1,6 @@
 """ORM models. Import here so they register on ``Base.metadata``."""
 
+from app.models.scan_history import ScanHistory, ScanRecommendation
 from app.models.user import User
 
-__all__ = ["User"]
+__all__ = ["User", "ScanHistory", "ScanRecommendation"]

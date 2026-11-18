@@ -47,6 +47,9 @@ tmp/
 temp/
 *.tmp
 
+# User-uploaded scan history photos
+uploads/
+
 # Local model artifacts and private datasets
 /models/
 datasets/

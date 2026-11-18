@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.db.database import Base
-from app.models import User  # noqa: F401 — register models on metadata
+from app.models import ScanHistory, ScanRecommendation, User  # noqa: F401
 
 config = context.config
 

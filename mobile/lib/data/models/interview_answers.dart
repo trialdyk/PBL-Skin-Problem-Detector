@@ -39,6 +39,23 @@ class InterviewAnswers extends Equatable {
     );
   }
 
+  /// Payload JSON untuk `POST /history` (snake_case sesuai backend).
+  Map<String, Object?> toApiJson() {
+    return {
+      'gender': switch (gender) {
+        GenderOption.male => 'male',
+        GenderOption.female => 'female',
+        GenderOption.preferNotToSay => 'prefer_not_to_say',
+        null => null,
+      },
+      'age': age,
+      'uses_sunscreen': usesSunscreen,
+      'skin_type': skinType?.name,
+      'unhealthy_food_often': unhealthyFoodOften,
+      'skipped': skipped,
+    };
+  }
+
   @override
   List<Object?> get props => [
         gender,

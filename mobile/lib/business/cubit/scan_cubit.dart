@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pbl_skin_problem_detector/business/cubit/scan_state.dart';
 import 'package:pbl_skin_problem_detector/data/models/interview_answers.dart';
@@ -250,6 +251,13 @@ class ScanCubit extends Cubit<ScanState> {
           'Analisis foto sedang tidak tersedia, jadi hasil ini memakai '
           'jawaban interview Anda.',
         );
+      }
+
+      // One-shot persist ke server (tidak memblokir layar hasil).
+      try {
+        await _repository.persistHistory();
+      } catch (error) {
+        debugPrint('Gagal menyimpan riwayat: $error');
       }
     } catch (_) {
       emit(state.copyWith(

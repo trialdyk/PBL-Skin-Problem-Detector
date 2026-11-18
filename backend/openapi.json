@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DermaScan Backend",
-    "description": "DermaScan backend API for facial skin-condition analysis. Public: POST /auth/login, POST /auth/register, POST /auth/verify-email, POST /auth/resend-verification, POST /auth/google, GET /health. Protected routes require Authorization: Bearer <access_token> (Authorize in Swagger). /users/me reads and updates the caller's profile. POST /ml/predict runs the shipped CNN on 1-3 face photos and returns a GEA grade. Items is a placeholder.",
+    "description": "DermaScan backend API for facial skin-condition analysis. Public: POST /auth/login, POST /auth/register, POST /auth/verify-email, POST /auth/resend-verification, POST /auth/google, GET /health. Protected routes require Authorization: Bearer <access_token> (Authorize in Swagger). /users/me reads and updates the caller's profile. POST /ml/predict runs the shipped CNN on 1-3 face photos and returns a GEA grade. POST /history saves a completed scan (photos + interview + pending recommendation). Items is a placeholder.",
     "version": "0.1.0"
   },
   "paths": {
@@ -479,6 +479,361 @@
         ]
       }
     },
+    "/history": {
+      "post": {
+        "tags": [
+          "history"
+        ],
+        "summary": "Save a completed scan to history (one-shot)",
+        "description": "Persist three photos on disk and create history + pending recommendation.",
+        "operationId": "create_history_history_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_history_history_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid fields or photos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired, or inactive-user bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A photo exceeds HISTORY_MAX_UPLOAD_MB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "history"
+        ],
+        "summary": "List the caller's scan history",
+        "operationId": "list_history_history_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired, or inactive-user bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/history/{history_id}": {
+      "get": {
+        "tags": [
+          "history"
+        ],
+        "summary": "Get one history detail",
+        "operationId": "get_history_history__history_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "history_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "History Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired, or inactive-user bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "History not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "history"
+        ],
+        "summary": "Delete a history entry and its photos",
+        "operationId": "delete_history_history__history_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "history_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "History Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteHistoryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired, or inactive-user bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "History not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/history/{history_id}/photos/{angle}": {
+      "get": {
+        "tags": [
+          "history"
+        ],
+        "summary": "Download one history photo",
+        "operationId": "get_history_photo_history__history_id__photos__angle__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "history_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "History Id"
+            }
+          },
+          {
+            "name": "angle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Angle"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired, or inactive-user bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Photo or history not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/items/status": {
       "get": {
         "tags": [
@@ -698,6 +1053,87 @@
         "title": "AuthResponse",
         "description": "Bearer token plus the authenticated user (login / verify / Google)."
       },
+      "Body_create_history_history_post": {
+        "properties": {
+          "front": {
+            "type": "string",
+            "format": "binary",
+            "title": "Front",
+            "description": "Front selfie"
+          },
+          "left": {
+            "type": "string",
+            "format": "binary",
+            "title": "Left",
+            "description": "Left selfie"
+          },
+          "right": {
+            "type": "string",
+            "format": "binary",
+            "title": "Right",
+            "description": "Right selfie"
+          },
+          "grade": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Grade"
+          },
+          "grade_label": {
+            "type": "string",
+            "title": "Grade Label"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "result_source": {
+            "type": "string",
+            "title": "Result Source",
+            "description": "ml or rule_based"
+          },
+          "interview": {
+            "type": "string",
+            "title": "Interview",
+            "description": "Interview answers as JSON object string"
+          },
+          "top_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Label"
+          },
+          "aggregate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aggregate",
+            "description": "Optional aggregate JSON string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "front",
+          "left",
+          "right",
+          "grade",
+          "grade_label",
+          "model_id",
+          "result_source",
+          "interview"
+        ],
+        "title": "Body_create_history_history_post"
+      },
       "Body_predict_ml_predict_post": {
         "properties": {
           "files": {
@@ -745,6 +1181,25 @@
         ],
         "title": "ClassScore",
         "description": "Probability of one model class (IGA) and the GEA grade it maps to."
+      },
+      "DeleteHistoryResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "DeleteHistoryResponse"
       },
       "ErrorResponse": {
         "properties": {
@@ -808,6 +1263,277 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HistoryCreateResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "grade": {
+            "type": "integer",
+            "title": "Grade"
+          },
+          "grade_label": {
+            "type": "string",
+            "title": "Grade Label"
+          },
+          "top_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Label"
+          },
+          "result_source": {
+            "type": "string",
+            "title": "Result Source"
+          },
+          "recommendation": {
+            "$ref": "#/components/schemas/RecommendationOut"
+          },
+          "photos": {
+            "$ref": "#/components/schemas/HistoryPhotoUrls"
+          },
+          "interview": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Interview"
+          },
+          "aggregate": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aggregate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "model_id",
+          "grade",
+          "grade_label",
+          "result_source",
+          "recommendation",
+          "photos",
+          "interview"
+        ],
+        "title": "HistoryCreateResponse",
+        "description": "Body of a successful ``POST /history``."
+      },
+      "HistoryDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "grade": {
+            "type": "integer",
+            "title": "Grade"
+          },
+          "grade_label": {
+            "type": "string",
+            "title": "Grade Label"
+          },
+          "top_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Label"
+          },
+          "result_source": {
+            "type": "string",
+            "title": "Result Source"
+          },
+          "recommendation": {
+            "$ref": "#/components/schemas/RecommendationOut"
+          },
+          "photos": {
+            "$ref": "#/components/schemas/HistoryPhotoUrls"
+          },
+          "interview": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Interview"
+          },
+          "aggregate": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aggregate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "model_id",
+          "grade",
+          "grade_label",
+          "result_source",
+          "recommendation",
+          "photos",
+          "interview"
+        ],
+        "title": "HistoryDetail",
+        "description": "``GET /history/{id}`` including interview and aggregate snapshot."
+      },
+      "HistoryListItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "grade": {
+            "type": "integer",
+            "title": "Grade"
+          },
+          "grade_label": {
+            "type": "string",
+            "title": "Grade Label"
+          },
+          "top_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Label"
+          },
+          "result_source": {
+            "type": "string",
+            "title": "Result Source"
+          },
+          "recommendation": {
+            "$ref": "#/components/schemas/RecommendationOut"
+          },
+          "photos": {
+            "$ref": "#/components/schemas/HistoryPhotoUrls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "model_id",
+          "grade",
+          "grade_label",
+          "result_source",
+          "recommendation",
+          "photos"
+        ],
+        "title": "HistoryListItem",
+        "description": "One row in ``GET /history``."
+      },
+      "HistoryListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "HistoryListResponse"
+      },
+      "HistoryPhotoUrls": {
+        "properties": {
+          "front": {
+            "type": "string",
+            "title": "Front"
+          },
+          "left": {
+            "type": "string",
+            "title": "Left"
+          },
+          "right": {
+            "type": "string",
+            "title": "Right"
+          }
+        },
+        "type": "object",
+        "required": [
+          "front",
+          "left",
+          "right"
+        ],
+        "title": "HistoryPhotoUrls",
+        "description": "Authenticated photo paths relative to the API base URL."
       },
       "ImagePrediction": {
         "properties": {
@@ -931,6 +1657,43 @@
         ],
         "title": "MlPredictResponse",
         "description": "Body of a successful ``POST /ml/predict`` response."
+      },
+      "RecommendationOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "RecommendationOut",
+        "description": "Embedded recommendation slot (LLM filled later)."
       },
       "RegisterPendingResponse": {
         "properties": {
@@ -1249,6 +2012,10 @@
     {
       "name": "users",
       "description": "Protected. Current user profile (GET/PATCH /users/me) and router status."
+    },
+    {
+      "name": "history",
+      "description": "Protected. Persist and list face-scan history with local photo storage and a pending recommendation slot for a future LLM service."
     },
     {
       "name": "items",

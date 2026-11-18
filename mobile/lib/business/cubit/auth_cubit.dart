@@ -10,6 +10,9 @@ class AuthCubit extends Cubit<AuthState> {
 
   final AuthRepository _repository;
 
+  /// JWT aktif di [ApiClient] bersama (untuk foto history ber-auth).
+  String? get accessToken => _repository.api.accessToken;
+
   void togglePrivacy(bool value) {
     emit(state.copyWith(acceptedPrivacy: value, clearError: true));
   }

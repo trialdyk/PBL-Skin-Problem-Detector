@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 
 from app.core.config import get_settings
-from app.routers import auth, items, ml, users
+from app.routers import auth, history, items, ml, users
 
 settings = get_settings()
 
@@ -16,6 +16,7 @@ app = FastAPI(
         "Protected routes require Authorization: Bearer <access_token> "
         "(Authorize in Swagger). /users/me reads and updates the caller's profile. "
         "POST /ml/predict runs the shipped CNN on 1-3 face photos and returns a GEA grade. "
+        "POST /history saves a completed scan (photos + interview + pending recommendation). "
         "Items is a placeholder."
     ),
     openapi_tags=[
@@ -29,6 +30,13 @@ app = FastAPI(
         {
             "name": "users",
             "description": "Protected. Current user profile (GET/PATCH /users/me) and router status.",
+        },
+        {
+            "name": "history",
+            "description": (
+                "Protected. Persist and list face-scan history with local photo storage "
+                "and a pending recommendation slot for a future LLM service."
+            ),
         },
         {
             "name": "items",
@@ -48,6 +56,7 @@ app = FastAPI(
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(history.router)
 app.include_router(items.router)
 app.include_router(ml.router)
 

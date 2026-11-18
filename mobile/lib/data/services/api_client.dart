@@ -68,6 +68,16 @@ class ApiClient {
         .timeout(timeout);
   }
 
+  Future<http.Response> delete(
+    String path, {
+    bool auth = false,
+    Duration timeout = const Duration(seconds: 20),
+  }) {
+    return _client
+        .delete(uri(path), headers: headers(auth: auth))
+        .timeout(timeout);
+  }
+
   /// Multipart POST for file uploads, e.g. `POST /ml/predict`.
   ///
   /// [files] maps a form field name to absolute file paths (one part per path).

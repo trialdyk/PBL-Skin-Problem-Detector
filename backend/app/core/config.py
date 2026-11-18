@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     ml_input_size: int = 160
     ml_max_upload_mb: int = 10
 
+    # Scan history photos on local disk (relative paths resolve against backend/).
+    history_upload_dir: str = "uploads/history"
+    history_max_upload_mb: int = 10
+
+
     # SMTP — used to send registration verification codes (Gmail app password, etc.).
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587

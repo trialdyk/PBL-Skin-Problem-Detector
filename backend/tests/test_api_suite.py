@@ -35,10 +35,19 @@ EXPECTED_PATHS = {
     "/users/me",
     "/items/status",
     "/ml/predict",
+    "/history",
+    "/history/{history_id}",
+    "/history/{history_id}/photos/{angle}",
     "/health",
 }
 
-PROTECTED_PATHS = ("/users/status", "/users/me", "/items/status", "/ml/predict")
+PROTECTED_PATHS = (
+    "/users/status",
+    "/users/me",
+    "/items/status",
+    "/ml/predict",
+    "/history",
+)
 
 
 def _png(color: tuple[int, int, int] = (214, 176, 160), size: int = 32) -> bytes:

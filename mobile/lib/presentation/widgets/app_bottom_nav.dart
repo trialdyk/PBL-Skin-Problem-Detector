@@ -204,10 +204,8 @@ void handleBottomNavTap(
         showHint(context, 'Ambil ketiga foto wajah terlebih dahulu.');
       }
     case NavIndex.report:
-      if (scan.state.result != null) {
-        context.push('/scan/result');
-      } else {
-        showHint(context, 'Belum ada hasil. Selesaikan pemeriksaan dahulu.');
+      if (current != NavIndex.report) {
+        context.go('/history');
       }
   }
 }
