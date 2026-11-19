@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pbl_skin_problem_detector/data/models/scan_session.dart';
 import 'package:pbl_skin_problem_detector/presentation/audio/app_sound_player.dart';
 
 /// Player palsu: membuktikan interface cukup kecil untuk di-fake di test layar
@@ -8,6 +9,8 @@ import 'package:pbl_skin_problem_detector/presentation/audio/app_sound_player.da
 class _FakeSoundPlayer implements AppSoundPlayer {
   int tickCount = 0;
   int shutterCount = 0;
+  int voiceCount = 0;
+  final List<SelfieAngle> voiceAngles = [];
   bool prepared = false;
   bool disposed = false;
 
@@ -19,6 +22,12 @@ class _FakeSoundPlayer implements AppSoundPlayer {
 
   @override
   Future<void> playShutter() async => shutterCount++;
+
+  @override
+  Future<void> playVoice(SelfieAngle angle) async {
+    voiceCount++;
+    voiceAngles.add(angle);
+  }
 
   @override
   Future<void> dispose() async => disposed = true;
