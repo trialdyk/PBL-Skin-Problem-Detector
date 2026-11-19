@@ -1,0 +1,30 @@
+{
+  "python": "3.10.6",
+  "opencv": "4.11.0",
+  "numpy": "1.26.4",
+  "scikit_learn": "1.6.1",
+  "manifest_sha256": "4690d896d04874a3287312cacc28fc3331b49e810bda41092529152e9e3d0d87",
+  "cascade_sha256": "0f7d4527844eb514d4a4948e822da90fbb16a34a0bbbbc6adc6498747a5aafb0",
+  "cv_folds": 5,
+  "cv_random_state": 42,
+  "parameter_grid": {
+    "svc__C": [
+      0.1,
+      1.0,
+      10.0,
+      100.0
+    ],
+    "svc__gamma": [
+      "scale",
+      0.001,
+      0.01,
+      0.1
+    ]
+  },
+  "landmark_options": {
+    "max_num_faces": 2,
+    "forehead_ratio": 0.25
+  },
+  "landmark_method": "opencv_facemark_lbf_68",
+  "landmark_predictor_sha256": "70dd8b1657c42d1595d6bd13d97d932877b3bed54a95d3c4733a0f740d1fd66b"
+}

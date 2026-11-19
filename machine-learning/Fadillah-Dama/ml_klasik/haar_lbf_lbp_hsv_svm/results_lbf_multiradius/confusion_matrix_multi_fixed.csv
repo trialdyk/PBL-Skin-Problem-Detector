@@ -1,0 +1,5 @@
+actual_class,mild,moderate,severe,very_severe
+mild,46,27,1,1
+moderate,25,57,2,7
+severe,5,8,12,2
+very_severe,3,3,4,9

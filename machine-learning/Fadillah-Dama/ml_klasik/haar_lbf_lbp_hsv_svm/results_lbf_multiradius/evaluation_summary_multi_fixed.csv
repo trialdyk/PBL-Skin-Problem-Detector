@@ -1,0 +1,2 @@
+experiment,feature_count,C,gamma,macro_f1,balanced_accuracy,accuracy
+multi_fixed,102,10.0,scale,0.5514322910425369,0.53945890366943,0.5849056603773585

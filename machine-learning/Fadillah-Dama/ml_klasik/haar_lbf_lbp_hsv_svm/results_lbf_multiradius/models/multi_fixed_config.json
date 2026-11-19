@@ -1,0 +1,35 @@
+{
+  "feature_set": "multi_radius",
+  "lbp_radii": [
+    1,
+    2,
+    3
+  ],
+  "lbp_neighbors": "8 * radius",
+  "lbp_method": "uniform",
+  "lbp_min_interior_pixels": 100,
+  "lbp_fallback": "full crop interior for the affected radius only",
+  "hsv_bins_per_channel": 16,
+  "feature_count": 102,
+  "feature_order": "LBP in ascending radius order, H, S, V",
+  "landmark_method": "opencv_facemark_lbf_68",
+  "landmark_options": {
+    "max_num_faces": 2,
+    "forehead_ratio": 0.25
+  },
+  "landmark_predictor_file": "lbfmodel.yaml",
+  "landmark_predictor_sha256": "70dd8b1657c42d1595d6bd13d97d932877b3bed54a95d3c4733a0f740d1fd66b",
+  "forehead_method": "reversed eyebrow points shifted upward by forehead_ratio * brow_to_chin_height",
+  "haar_scale_factor": 1.1,
+  "haar_min_neighbors": 5,
+  "haar_min_size": [
+    40,
+    40
+  ],
+  "haar_margin": 0.15,
+  "jpeg_draft_size": 768,
+  "haar_detection_max_side": 640,
+  "crop_max_side": 384,
+  "C": 10.0,
+  "gamma": "scale"
+}
